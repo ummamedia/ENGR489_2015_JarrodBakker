@@ -1,0 +1,4 @@
+# Ignore adding the following files to the repository
+runningInstructions.txt
+runStatelessFirewall.sh
+startNetwork.sh

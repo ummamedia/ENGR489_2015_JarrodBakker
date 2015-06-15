@@ -41,6 +41,7 @@ class ACLSwitch(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
 
     # Fields
+    # TODO give members of the tuple names i.e. ip_src, ip_dst, etc. 
     access_control_list = []
 
     def __init__(self, *args, **kwargs):
@@ -132,6 +133,7 @@ class ACLSwitch(app_manager.RyuApp):
             print ("\nNew flow detected, checking ACL.\n")
             # Assume IPv4 packets only
             # TODO add IPv6 support
+            # TODO block traffic in one direction
             data = pkt.get_protocols(ipv4.ipv4)
             if (data):
                 ipv4_head = data[0]
@@ -139,16 +141,29 @@ class ACLSwitch(app_manager.RyuApp):
                 ipv4_dst = ipv4_head.dst
                 ipv4_src = ipv4_head.src
                # print str(ipv4_dst) + " " + str(ipv4_src)
+                found_match = False
                 for rule in self.access_control_list:
                     if (ipv4_src == rule[0] and ipv4_dst == rule[1] ):
+                        found_match = True
+                        actions = []
                         print "Found a match!"
-
-            # flow_mod & packet_out
-            if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-                self.add_flow(datapath, 1, match, actions, msg.buffer_id)
-                return
-            else:
-                self.add_flow(datapath, 1, match, actions)
+                        # We have found flow which matches a rule in the ACL.
+                        # A match with empty actions means that the switch
+                        # should drop a packet
+                        if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+                            self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+                            return
+                        else:
+                            self.add_flow(datapath, 1, match, actions)
+                        # Rule has been added so break!
+                        break
+                if found_match == False:
+                    # flow_mod & packet_out
+                    if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+                        self.add_flow(datapath, 1, match, actions, msg.buffer_id)
+                        return
+                    else:
+                        self.add_flow(datapath, 1, match, actions)
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data

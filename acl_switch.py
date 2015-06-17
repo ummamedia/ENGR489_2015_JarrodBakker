@@ -6,6 +6,13 @@
 # a new flow, we check it against the ACL and decide if we allow
 # or drop the packet from there.
 #
+# Because rules which block traffic are important to the security
+# of a network, the priority of such rules should be higher than
+# the rules which allow traffic to flow. Currently, the default
+# priority value is used for rules which allow traffic and the max
+# value is used for rules which block traffic. Later on it may be
+# possible to specify custom priorities.
+#
 # The original license for simple_switch_13.py can be found below.
 #
 ####################################################################
@@ -39,10 +46,12 @@ from collections import namedtuple
 class ACLSwitch(app_manager.RyuApp):
     # Constants
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
+    OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
+            # Default priority is defined to be in the middle (0x8000 in 1.3)
+            # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst port_src port_dst")
 
     # Fields
-    # TODO give members of the tuple names i.e. ip_src, ip_dst, etc. 
     access_control_list = []
 
     def __init__(self, *args, **kwargs):
@@ -50,6 +59,7 @@ class ACLSwitch(app_manager.RyuApp):
         self.mac_to_port = {}
         #self.rule_input()
         self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.3", port_src="", port_dst=""))
+#        self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.2", port_src="12345", port_dst="12345"))
         print self.access_control_list
     
     def rule_input(self):
@@ -92,36 +102,38 @@ class ACLSwitch(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
-    # The incoming flow has IPv4. Search through the ACL for a match. If a
-    # match is found then return true, otherwise return false.
-    # @retun - if a match was found (True) or not (False)
+    # The incoming flow has IPv4. Search through the ACL for a match and 
+    # return the correct OF match and actions.
+    # @return - if a rule in the ACL is found: the matching rules and
+    #           actions for the switches to follow, otherwise False.
     # TODO have a separate ACL for IPv4 ad IPv6
-    def ipv4_flow(self, ipv4_head, datapath, match, actions, message, ofproto):
+    # TODO instead of flows being installed here, have this function return the actions and match etc.
+    def ipv4_match(self, ipv4_head, parser):
         print "[+] IPv4 Header: " + str(ipv4_head)
         ipv4_dst = ipv4_head.dst
         ipv4_src = ipv4_head.src
-        ipv4_found_acl_match = False
         for rule in self.access_control_list:
-            if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst ):
-            #if (ipv4_src == rule[0] and ipv4_dst == rule[1] ):
-                ipv4_found_acl_match = True
-                actions = []
-                print "\n[-] Match found, blocking traffic.\n"
-                priority = 1
+            if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst):
                 # We have found flow which matches a rule in the ACL.
+                print "\n[-] ACL Match found: creating action to block traffic.\n"
+                priority = self.OFP_MAX_PRIORITY
+                # Create the matching rule for OF switches
+                # TODO investigate weird errors when including ip_type. See note book.
+                match = parser.OFPMatch(eth_type = ethernet.ETH_TYPE_IP, ipv4_src = rule.ip_src, ipv4_dst = rule.ip_dst)
                 # A match with empty actions means that the switch
                 # should drop packets within the flow
-                # TODO handle the case where the buffer_id check fails!
-#                if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-#                    self.add_flow(datapath, 1, match, actions, msg.buffer_id)
-#                    return
-#                else:
-#                    self.add_flow(datapath, priority, match, actions)
-                self.add_flow(datapath, priority, match, actions)
-            # Rule has been added so break!
-            break
+                actions = []
+                # Return 
+                return (priority, match, actions)
+        # A match was not found so return False
+        return False
 
-        return ipv4_found_acl_match
+    # The incoming flow has IPv6. Search through the ACl for a match.
+    # @return - if a match was found (True) or not (False)
+    # TODO add support for IPv6
+    def ipv6_flow(self, ipv6_head, datapath, match, actions, message, ofproto):
+        ipv6_found_acl_match = False
+        return ipv_found_acl_match
 
     # The incoming flow does not match any rule in the ACL. Therefore add a
     # rule which allows the traffic to flow through.
@@ -176,19 +188,36 @@ class ACLSwitch(app_manager.RyuApp):
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=eth_dst)
             
-            print ("\n[+] New flow detected, checking ACL.\n")
+            print ("\n[+] New flow detected: checking ACL.\n")
+            priority = ofproto_v1_3.OFP_DEFAULT_PRIORITY
             # Assume IPv4 packets only
             # TODO add IPv6 support
             # TODO block traffic in one direction
             data = pkt.get_protocols(ipv4.ipv4)
             if (data):
                 ipv4_head = data[0]
-                
-                found_acl_match = self.ipv4_flow(ipv4_head, datapath, match, actions, msg, ofproto);
-                if found_acl_match == False:
-                    priority = 1
-                    if self.allow_flow(datapath, priority, match, actions, msg, ofproto) == False:
-                        return
+                pma = self.ipv4_match(ipv4_head, parser) # Priority Match Action
+                print "[#] " + str(pma)
+            #    found_acl_match = self.ipv4_flow(ipv4_head, datapath, match, actions, msg, ofproto);
+            #    if found_acl_match == False:
+            #        priority = 1
+            #        if self.allow_flow(datapath, priority, match, actions, msg, ofproto) == False:
+            #            return
+            
+                # If a match was found in the ACL, then the new flow must
+                # have the associated match rules and actions assigned to it.
+                if pma != False:
+                    priority = pma[0]
+                    match = pma[1]
+                    actions = pma [2]
+                    # TODO this makes an error happen: OFPET_BAD_MATCH code 9 (a prerequisite was not met)
+
+            if msg.buffer_id != ofproto.OFP_NO_BUFFER:
+                self.add_flow(datapath, priority, match, actions, msg.buffer_id)
+                return
+            else:
+                self.add_flow(datapath, priority, match, actions)
+
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data

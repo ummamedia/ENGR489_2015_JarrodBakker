@@ -59,7 +59,7 @@ class ACLSwitch(app_manager.RyuApp):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         #self.rule_input()
-        self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.3", port_src="", port_dst=""))
+        self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.3", port_src="*", port_dst="*"))
         self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.2", port_src="5001", port_dst="5001"))
         print self.access_control_list
     
@@ -114,22 +114,22 @@ class ACLSwitch(app_manager.RyuApp):
         ipv4_src = ipv4_head.src
         ipv4_dst = ipv4_head.dst
         # port numbers may not be needed but they are declared for scoping
-        port_src = 0 
-        port_dst = 0
+        port_src = ""
+        port_dst = ""
         # Assume TCP TODO add UDP support
         if ipv4_head.proto == ipv4.inet.IPPROTO_TCP:
             tcp_head = packet.get_protocols(tcp.tcp)[0]
             port_src = tcp_head.src_port
-            port_dst = tcp_head.dst_port
+            port_dst = str(tcp_head.dst_port)
         # Get layer 4 data (if it exists)
         for rule in self.access_control_list:
             # TODO handle port numbers (not ranges of). Need to define syntax for port numbers, say if you don't specify a port number.
             # If a rule doesn't have port numbers specified (i.e. block all
             # TCP/UDP/both traffic) then only match on IPv4 address.
-            if (rule.port_src == "" and rule.port_dst == ""):
+            if (rule.port_src == "*" and rule.port_dst == "*"):
                 if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst):
                     # We have found flow which matches a rule in the ACL.
-                    print "[-] ACL Match found: creating action to block traffic."
+                    print "[-] ACL Match found (IP): creating action to block traffic."
                     priority = self.OFP_MAX_PRIORITY
                     # Create the matching rule for OF switches. Note that
                     # ip_proto is not used for matching as this will allow ARP
@@ -148,7 +148,7 @@ class ACLSwitch(app_manager.RyuApp):
                    #and port_src == rule.port_src and port_dst == rule.port_dst):
                     and port_dst == rule.port_dst):
                     # We have found flow which matches a rule in the ACL.
-                    print "[-] ACL Match found: creating action to block traffic."
+                    print "[-] ACL Match found (IP -> TCP): creating action to block traffic."
                     priority = self.OFP_MAX_PRIORITY
                     # Create the matching rule for OF switches. Note that
                     # ip_proto is not used for matching as this will allow ARP
@@ -157,7 +157,8 @@ class ACLSwitch(app_manager.RyuApp):
                                             ipv4_src = rule.ip_src,
                                             ipv4_dst = rule.ip_dst,
                                             ip_proto = ipv4.inet.IPPROTO_TCP,
-                                            tcp_dst = rule.port_dst)
+                                           #tcp_src = rule.port_src 
+                                            tcp_dst = rule.port_dst) # NOTE expecting an int here?
                     # A match with empty actions means that the switch
                     # should drop packets within the flow
                     actions = []

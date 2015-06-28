@@ -6,6 +6,7 @@
 
 import logging
 from scapy.all import *
+import sys
 
 # Count the number ICMP ping replies received by the host. If none were
 # received then return 0, else return the number counted. Note that the
@@ -36,7 +37,10 @@ def testPing(ip_dst, n):
     logging.info("Finishing test \'testPing\'")
 
 if __name__ == "__main__":
+    if len(sys.argv) != 3:
+        print "ERROR: Test script requires two command-line arguments: the target host (in dotted decimal) and the number of pings to make."
+        sys.exit(2)
     logging.basicConfig(filename="test_out.log",
                         format='%(asctime)s %(message)s',
                         level=logging.DEBUG)
-    testPing("10.0.0.3", 10)
+    testPing(str(sys.argv[1]), int(sys.argv[2]))

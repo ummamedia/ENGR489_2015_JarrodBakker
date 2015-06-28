@@ -3,4 +3,5 @@ runningInstructions.txt
 runStatelessFirewall.sh
 startNetwork.sh
 *.pyc
+*.log
 acl_switch.py.v1

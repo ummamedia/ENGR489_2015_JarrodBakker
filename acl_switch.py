@@ -4,7 +4,8 @@
 #
 # This file manages the flow table and keeps an ACL. When we see
 # a new flow, we check it against the ACL and decide if we allow
-# or drop the packet from there.
+# or drop the packet from there. This stateless firewall will
+# proactively send the rules to the switches.
 #
 # Because rules which block traffic are important to the security
 # of a network, the priority of such rules should be higher than
@@ -43,6 +44,7 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
 from collections import namedtuple
+import socket, struct
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
@@ -50,7 +52,7 @@ class ACLSwitch(app_manager.RyuApp):
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
             # Default priority is defined to be in the middle (0x8000 in 1.3)
             # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst port_src port_dst")
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
 
     # Fields
     access_control_list = []
@@ -59,10 +61,88 @@ class ACLSwitch(app_manager.RyuApp):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         #self.rule_input()
-        self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.3", port_src="*", port_dst="*"))
-        self.access_control_list.append(self.ACL_ENTRY(ip_src="10.0.0.1", ip_dst="10.0.0.2", port_src="5001", port_dst="5001"))
+        self.addACLRule("10.0.0.1", "10.0.0.3", "*", "*", "*")
+        self.addACLRule("10.0.0.1","10.0.0.2","tcp","16","8080")
         print self.access_control_list
+
+    # Add a rule to the ACL. 
+    def addACLRule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
+            self.access_control_list.append(self.ACL_ENTRY(ip_src=ip_src,
+                                            ip_dst=ip_dst, tp_proto=tp_proto,
+                                            port_src=port_src, port_dst=port_dst))
     
+    # Proactively distribute firewall rules to the switches
+    # def add_flow(self, datapath, priority, match, actions, buffer_id=None):
+    def distributeRulesStartup(self, datapath, parser):
+        # datapath - describes an openflow switch from where a flow request could have come from
+        # priorty needs to be max
+        # match will need to reflect the rule
+        # actions should be blank as traffic will be blocked
+        # do not need bufferid as there should be no packets which are being buffered. Therefore make bufferid=None
+        # TODO Is it possible to append items to a rule instead?
+        for rule in self.access_control_list:
+            priority = self.OFP_MAX_PRIORITY
+            actions = []
+            match = None
+            match = parser.OFPMatch()
+            match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
+                               ethernet.ether.ETH_TYPE_IP)
+            if (rule.ip_src != "*"):
+                match.append_field(ofproto_v1_3.OXM_OF_IPV4_SRC,
+                                   struct.unpack("!I", socket.inet_aton(rule.ip_src))[0])
+            if (rule.ip_dst != "*"):
+                match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
+                                   struct.unpack("!I", socket.inet_aton(rule.ip_dst))[0])
+            if (rule.tp_proto != "*"):
+                if (rule.tp_proto == "tcp"):
+                    match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
+                                       ipv4.inet.IPPROTO_TCP)
+                    if (rule.port_src != "*"):
+                        match.append_field(ofproto_v1_3.OXM_OF_TCP_SRC,
+                                           int(rule.port_src))
+                    if (rule.port_src != "*"):
+                        match.append_field(ofproto_v1_3.OXM_OF_TCP_DST,
+                                           int(rule.port_dst))
+                elif (rule.tp_proto == "udp"):
+                    match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
+                                       ipv4.inet.IPPROTO_UDP)
+                    if (rule.port_src != "*"):
+                        match.append_field(ofproto_v1_3.OXM_OF_UDP_SRC,
+                                           int(rule.port_src))
+                    if (rule.port_src != "*"):
+                        match.append_field(ofproto_v1_3.OXM_OF_UDP_DST,
+                                           int(rule.port_dst))
+#           In the commented code below you see that each match rule is
+#           constructed independently thus leading to a lot of permutations.
+#           As shown in the code above, we can get around this by appending
+#           to the match field directly. It isn't as nice as user a parser
+#           but it leads to less code. I admit that user the struct...[0]
+#           stuff looks untidy but it is necessary that the addresses are
+#           in integer format and the function in ryu.lib.ip was returning
+#           errors.
+#            if (rule.tp_proto == "*" and rule.port_src == "*" and rule.port_dst == "*"):
+#                match = parser.OFPMatch(eth_type = ethernet.ether.ETH_TYPE_IP,
+#                                        ipv4_src = rule.ip_src,
+#                                        ipv4_dst = rule.ip_dst)
+#            elif (rule.tp_proto == "tcp"):
+#                match = parser.OFPMatch(eth_type = ethernet.ether.ETH_TYPE_IP,
+#                                        ipv4_src = rule.ip_src,
+#                                        ipv4_dst = rule.ip_dst,
+#                                        ip_proto = ipv4.inet.IPPROTO_TCP,
+#                                        tcp_src = int(rule.port_src),
+#                                        tcp_dst = int(rule.port_dst))
+#            elif (rule.tp_proto == "udp"):
+#                match = parser.OFP(eth_type = ethernet.ether.ETH_TYPE_IP,
+#                                        ipv4_src = rule.ip_src,
+#                                        ipv4_dst = rule.ip_dst,
+#                                        ip_proto = ipv4.inet.IPPROTO_UDP,
+#                                        tcp_src = int(rule.port_src),
+#                                        tcp_dst = int(rule.port_dst))
+
+            if match == None:
+                return
+            self.add_flow(datapath, priority, match, actions)
+
     def rule_input(self):
         # Continuously wait for the user to input rules for blocking
         # traffic.
@@ -87,6 +167,9 @@ class ACLSwitch(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
+        # The code below has been added by Jarrod N. Bakker
+        # TODO store the datapath ids in a list
+        self.distributeRulesStartup(datapath, parser)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -119,7 +202,7 @@ class ACLSwitch(app_manager.RyuApp):
         # Assume TCP TODO add UDP support
         if ipv4_head.proto == ipv4.inet.IPPROTO_TCP:
             tcp_head = packet.get_protocols(tcp.tcp)[0]
-            port_src = tcp_head.src_port
+            port_src = str(tcp_head.src_port)
             port_dst = str(tcp_head.dst_port)
         # Get layer 4 data (if it exists)
         for rule in self.access_control_list:
@@ -144,8 +227,9 @@ class ACLSwitch(app_manager.RyuApp):
                     return (priority, match, actions)
             # Block flow based IPv4 address and port numbers
             else:
-                 if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst
-                   #and port_src == rule.port_src and port_dst == rule.port_dst):
+                print rule
+                if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst
+                    and port_src == rule.port_src
                     and port_dst == rule.port_dst):
                     # We have found flow which matches a rule in the ACL.
                     print "[-] ACL Match found (IP -> TCP): creating action to block traffic."
@@ -157,8 +241,8 @@ class ACLSwitch(app_manager.RyuApp):
                                             ipv4_src = rule.ip_src,
                                             ipv4_dst = rule.ip_dst,
                                             ip_proto = ipv4.inet.IPPROTO_TCP,
-                                           #tcp_src = rule.port_src 
-                                            tcp_dst = rule.port_dst) # NOTE expecting an int here?
+                                            tcp_src = int(rule.port_src),
+                                            tcp_dst = int(rule.port_dst)) # NOTE expecting an int here?
                     # A match with empty actions means that the switch
                     # should drop packets within the flow
                     actions = []

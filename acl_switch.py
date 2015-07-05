@@ -14,6 +14,9 @@
 # value is used for rules which block traffic. Later on it may be
 # possible to specify custom priorities.
 #
+# The RESTful interface code is adapted from
+# http://osrg.github.io/ryu-book/en/html/rest_api.html.
+#
 # The original license for simple_switch_13.py can be found below.
 #
 ####################################################################
@@ -33,6 +36,8 @@
 # limitations under the License.
 #####################################################################
 
+# TODO fix same function naming convention issues...
+
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
@@ -41,17 +46,23 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 # I have added the below libraries to this code
+# Packet stuff
 from ryu.lib.packet import ipv4
 from ryu.lib.packet import tcp
-from ryu.lib import hub
-from collections import namedtuple
 import socket, struct
+# REST interface
+import json
+from webob import Response
+from ryu.app.wsgi import ControllerBase, WSGIApplication, route
+# Other
+#from ryu.lib import hub
 #import threading
 #import sys
 #import interface
+from collections import namedtuple
 
-# TODO for interface intergration, first: can interface update the controller's ACL? second: propagate changes to the switches
-# NOTE the interface will probably need to run in its own thread (this is probably recommended)
+acl_switch_instance_name = "acl_switch_app"
+url = "/acl_switch"
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
@@ -60,6 +71,7 @@ class ACLSwitch(app_manager.RyuApp):
             # Default priority is defined to be in the middle (0x8000 in 1.3)
             # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
+    _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
     access_control_list = []
@@ -80,6 +92,8 @@ class ACLSwitch(app_manager.RyuApp):
         except:
             print "[-] ERROR: could not open file \'" + str(filename) + "\'"
         print self.access_control_list
+        wsgi = kwargs['wsgi']
+        wsgi.register(ACLSwitchRESTInterface, {acl_switch_instance_name : self})
 
     def importFromFile(self, filename):
         buf_in = open(filename)
@@ -159,7 +173,7 @@ class ACLSwitch(app_manager.RyuApp):
         # Take note of switches (via their datapaths)
         self.connected_switches.append(ev.msg.datapath_id)
         # Distribute the list of rules to the switch
-        self.distributeRulesStartup(datapath, parser)
+        #self.distributeRulesStartup(datapath, parser)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -340,3 +354,24 @@ class ACLSwitch(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
+
+# This class manages the RESTful API calls to add rules etc.
+class ACLSwitchRESTInterface(ControllerBase):
+
+    def __init__(self, req, link, data, **config):
+        super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
+        self.acl_switch_inst = data[acl_switch_instance_name]
+    
+    @route("acl_switch", url, methods=["GET"])
+    def return_acl(self, req, **kwargs):
+        acl = self.acl_switch_inst.access_control_list
+        body = json.dumps(acl)
+        return Response(content_type="application/json", body=body)
+
+    # example: curl -X PUT -d '{"ip_src":"10.0.0.2", "ip_dst":"10.0.0.3", "tp_proto":"*", "port_src":"*", "port_dst":"*"}' http://127.0.0.1:8080/acl_switch
+    @route("acl_switch", url, methods=["PUT"])
+    def add_rule(self, req, **kwargs):
+        new_rule = eval(req.body)
+        print new_rule
+        # TODO parse the json to grab the needed data
+

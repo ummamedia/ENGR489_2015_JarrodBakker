@@ -362,6 +362,7 @@ class ACLSwitchRESTInterface(ControllerBase):
         super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
         self.acl_switch_inst = data[acl_switch_instance_name]
     
+    # example: curl -X GET http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["GET"])
     def return_acl(self, req, **kwargs):
         acl = self.acl_switch_inst.access_control_list
@@ -372,6 +373,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):
         new_rule = eval(req.body)
-        print new_rule
-        # TODO parse the json to grab the needed data
+        self.acl_switch_inst.addACLRule(new_rule["ip_src"], new_rule["ip_dst"],
+                                     new_rule["tp_proto"], new_rule["port_src"],
+                                     new_rule["port_dst"])
 

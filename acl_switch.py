@@ -77,21 +77,28 @@ class ACLSwitch(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-        filename = "ryu/ENGR489_2015_JarrodBakker/rules.acl"
+        filename = "ryu/ENGR489_2015_JarrodBakker/rules.json" # TODO this should be a constant
         try:
             self.import_from_file(filename)
         except:
-            print "[-] ERROR: could not open file \'" + str(filename) + "\'"
-        print self.access_control_list
+            print "[-] ERROR: could not read from file \'" + str(filename) + "\'\n\t" + str(sys.exc_info())
         wsgi = kwargs['wsgi']
         wsgi.register(ACLSwitchRESTInterface, {acl_switch_instance_name : self})
 
+    # Read in ACL rules from file filename. Note that the values passed
+    # through will have 'u' in front of them. This denotes that the string
+    # is Unicode encoded, as such it will affect the intended value.
+    # @param filename - the input file
+    # TODO handle case where file cannot be found
     def import_from_file(self, filename):
         buf_in = open(filename)
         for line in buf_in:
-            items = line.split(", ")
-            items[len(items)-1] = items[len(items)-1][:-1] # trim \n from input
-            self.add_ACL_Rule(items[0], items[1], items[2], items[3], items[4])
+            if line[0] == "#":
+                continue # Skip file comments
+            rule = json.loads(line)
+            self.add_ACL_Rule(rule["ip_src"], rule["ip_dst"],
+                              rule["tp_proto"], rule["port_src"],
+                              rule["port_dst"])
 
     # Add a rule to the ACL. 
     def add_ACL_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
@@ -99,11 +106,11 @@ class ACLSwitch(app_manager.RyuApp):
                                      tp_proto=tp_proto, port_src=port_src,
                                      port_dst=port_dst)
             self.access_control_list.append(newRule)
-            #self.distributeSingleRule(newRule)
             return newRule
     
     # Proactively distribute a newly added rule to all connected switches
-    def distribute_Single_Rule(self, rule):
+    def distribute_single_rule(self, rule):
+        # TODO refactor: check that switches exist (list not empty), rule is created then loop & distribute.
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
             parser = datapath.ofproto_parser
@@ -148,7 +155,7 @@ class ACLSwitch(app_manager.RyuApp):
     #      the network later on.
     # @param datapath - an OF enabled switch to communicate with
     # @param parser - parser for the switch passed through in datapath
-    def distribute_Rules_Startup(self, datapath, parser):
+    def distribute_rules_startup(self, datapath, parser):
         for rule in self.access_control_list:
             priority = self.OFP_MAX_PRIORITY
             actions = []
@@ -206,7 +213,7 @@ class ACLSwitch(app_manager.RyuApp):
         # Take note of switches (via their datapaths)
         self.connected_switches.append(ev.msg.datapath_id)
         # Distribute the list of rules to the switch
-        self.distribute_Rules_Startup(datapath, parser)
+        self.distribute_rules_startup(datapath, parser)
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
@@ -405,11 +412,11 @@ class ACLSwitchRESTInterface(ControllerBase):
     # example: curl -X PUT -d '{"ip_src":"10.0.0.2", "ip_dst":"10.0.0.3", "tp_proto":"*", "port_src":"*", "port_dst":"*"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):
-        ruleReq = eval(req.body)
+        ruleReq = json.loads(req.body)
         newRule = self.acl_switch_inst.add_ACL_Rule(ruleReq["ip_src"],
                                                     ruleReq["ip_dst"],
                                                     ruleReq["tp_proto"],
                                                     ruleReq["port_src"],
                                                     ruleReq["port_dst"])
-        self.acl_switch_inst.distribute_Single_Rule(newRule)
+        self.acl_switch_inst.distribute_single_rule(newRule)
 

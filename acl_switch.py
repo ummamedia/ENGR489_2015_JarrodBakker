@@ -14,7 +14,7 @@
 # value is used for rules which block traffic. Later on it may be
 # possible to specify custom priorities.
 #
-# The RESTful interface code is adapted from
+# The RESTful interface code has been adapted from
 # http://osrg.github.io/ryu-book/en/html/rest_api.html.
 #
 # The original license for simple_switch_13.py can be found below.
@@ -68,6 +68,12 @@ class ACLSwitch(app_manager.RyuApp):
             # Default priority is defined to be in the middle (0x8000 in 1.3)
             # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
+            # ACL_ENTRY could contain the respective OFPMatch for the rule BUT it
+            # requires the appropriate parser for a switch. The assumption made
+            # here is that not all switches on a network will be using the same
+            # version of OpenFlow. In reality this may be the case but is it worth
+            # the risk? Check with supervisors! (TODO)
+    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
     _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
@@ -77,9 +83,8 @@ class ACLSwitch(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
-        filename = "ryu/ENGR489_2015_JarrodBakker/rules.json" # TODO this should be a constant
         try:
-            self.import_from_file(filename)
+            self.import_from_file(self.ACL_FILENAME)
         except:
             print "[-] ERROR: could not read from file \'" + str(filename) + "\'\n\t" + str(sys.exc_info())
         wsgi = kwargs['wsgi']
@@ -99,8 +104,15 @@ class ACLSwitch(app_manager.RyuApp):
             self.add_ACL_Rule(rule["ip_src"], rule["ip_dst"],
                               rule["tp_proto"], rule["port_src"],
                               rule["port_dst"])
-
-    # Add a rule to the ACL. 
+    
+    # Add a rule to the ACL by creating an entry then appending it to the list. 
+    # @param ip_src - the source IP address to match
+    # @param ip_dst - the destination IP address to match
+    # @param tp_proto - the Transport Layer (layer 4) protocol to match
+    # @param port_src - the Transport Layer source port to match
+    # @param port_dst - the Transport Layer destination port to match
+    # @return - the newly created rule. This is useful in the case where a
+    #           single rule has been created and needs to be distributed.
     def add_ACL_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
             newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                      tp_proto=tp_proto, port_src=port_src,
@@ -108,16 +120,17 @@ class ACLSwitch(app_manager.RyuApp):
             self.access_control_list.append(newRule)
             return newRule
     
-    # Proactively distribute a newly added rule to all connected switches
+    # Proactively distribute a newly added rule to all connected switches.
+    # It would seem intelligent to create the OFPMatch first then loop
+    # HOWEVER you cannot assume that switches will be running the same
+    # version of OpenFlow.
+    # @param rule - the ACL rule to distributed among the switches.
     def distribute_single_rule(self, rule):
-        # TODO refactor: check that switches exist (list not empty), rule is created then loop & distribute.
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
             parser = datapath.ofproto_parser
-            # follow code in distributeRulesStartup
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            match = None
             match = parser.OFPMatch()
             match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                                ethernet.ether.ETH_TYPE_IP)
@@ -146,20 +159,17 @@ class ACLSwitch(app_manager.RyuApp):
                     if (rule.port_src != "*"):
                         match.append_field(ofproto_v1_3.OXM_OF_UDP_DST,
                                            int(rule.port_dst))
-            if match == None:
-                return
             self.add_flow(datapath, priority, match, actions)
 
     # Proactively distribute hardcoded firewall rules to the switches.
-    # NOTE This is mainly used for testing rules or if a new switch joins
-    #      the network later on.
+    # This function is called on application start-up to distribute rules
+    # read in from a file.
     # @param datapath - an OF enabled switch to communicate with
     # @param parser - parser for the switch passed through in datapath
     def distribute_rules_startup(self, datapath, parser):
         for rule in self.access_control_list:
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            match = None
             match = parser.OFPMatch()
             match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                                ethernet.ether.ETH_TYPE_IP)
@@ -188,8 +198,6 @@ class ACLSwitch(app_manager.RyuApp):
                     if (rule.port_src != "*"):
                         match.append_field(ofproto_v1_3.OXM_OF_UDP_DST,
                                            int(rule.port_dst))
-            if match == None:
-                return
             self.add_flow(datapath, priority, match, actions)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -229,93 +237,6 @@ class ACLSwitch(app_manager.RyuApp):
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
-
-    # The incoming flow has IPv4. Search through the ACL for a match and 
-    # return the correct OF match and actions.
-    # @return - if a rule in the ACL is found: the matching rules and
-    #           actions for the switches to follow, otherwise False.
-    # TODO have a separate ACL for IPv4 ad IPv6
-    # TODO instead of flows being installed here, have this function return the actions and match etc.
-    def ipv4_match(self, packet, ipv4_head, parser):
-        #print "[+] IPv4 Header: " + str(ipv4_head)
-        ipv4_src = ipv4_head.src
-        ipv4_dst = ipv4_head.dst
-        # port numbers may not be needed but they are declared for scoping
-        port_src = ""
-        port_dst = ""
-        # Assume TCP TODO add UDP support
-        if ipv4_head.proto == ipv4.inet.IPPROTO_TCP:
-            tcp_head = packet.get_protocols(tcp.tcp)[0]
-            port_src = str(tcp_head.src_port)
-            port_dst = str(tcp_head.dst_port)
-        # Get layer 4 data (if it exists)
-        for rule in self.access_control_list:
-            # TODO handle port numbers (not ranges of). Need to define syntax for port numbers, say if you don't specify a port number.
-            # If a rule doesn't have port numbers specified (i.e. block all
-            # TCP/UDP/both traffic) then only match on IPv4 address.
-            if (rule.port_src == "*" and rule.port_dst == "*"):
-                if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst):
-                    # We have found flow which matches a rule in the ACL.
-                    print "[-] ACL Match found (IP): creating action to block traffic."
-                    priority = self.OFP_MAX_PRIORITY
-                    # Create the matching rule for OF switches. Note that
-                    # ip_proto is not used for matching as this will allow ARP
-                    # packets through after a period of time.
-                    match = parser.OFPMatch(eth_type = ethernet.ether.ETH_TYPE_IP,
-                                            ipv4_src = rule.ip_src,
-                                            ipv4_dst = rule.ip_dst)
-                    # A match with empty actions means that the switch
-                    # should drop packets within the flow
-                    actions = []
-                    # Return 
-                    return (priority, match, actions)
-            # Block flow based IPv4 address and port numbers
-            else:
-                print rule
-                if (ipv4_src == rule.ip_src and ipv4_dst == rule.ip_dst
-                    and port_src == rule.port_src
-                    and port_dst == rule.port_dst):
-                    # We have found flow which matches a rule in the ACL.
-                    print "[-] ACL Match found (IP -> TCP): creating action to block traffic."
-                    priority = self.OFP_MAX_PRIORITY
-                    # Create the matching rule for OF switches. Note that
-                    # ip_proto is not used for matching as this will allow ARP
-                    # packets through after a period of time.
-                    match = parser.OFPMatch(eth_type = ethernet.ether.ETH_TYPE_IP,
-                                            ipv4_src = rule.ip_src,
-                                            ipv4_dst = rule.ip_dst,
-                                            ip_proto = ipv4.inet.IPPROTO_TCP,
-                                            tcp_src = int(rule.port_src),
-                                            tcp_dst = int(rule.port_dst)) # NOTE expecting an int here?
-                    # A match with empty actions means that the switch
-                    # should drop packets within the flow
-                    actions = []
-                    # Return 
-                    return (priority, match, actions)   
-        # A match was not found so return False
-        return False
-
-    # The incoming flow has IPv6. Search through the ACl for a match.
-    # @return - if a match was found (True) or not (False)
-    # TODO add support for IPv6
-    def ipv6_flow(self, ipv6_head, datapath, match, actions, message, ofproto):
-        ipv6_found_acl_match = False
-        return ipv_found_acl_match
-
-    # The incoming flow does not match any rule in the ACL. Therefore add a
-    # rule which allows the traffic to flow through.
-    # @return - if the buffer_id is valid (True) or not (False)
-    # TODO does this function need the entire event message or just the 
-    # buffer id? (just in case)
-    def allow_flow(self, datapath, priority, match, actions, message, ofproto):
-        # verify if we have a valid buffer_id, if yes avoid to send both
-        # flow_mod & packet_out
-        if message.buffer_id != ofproto.OFP_NO_BUFFER:
-            self.add_flow(datapath, priority, match, actions, message.buffer_id)
-            return False
-        else:
-            self.add_flow(datapath, priority, match, actions)
-        return True
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
@@ -358,29 +279,9 @@ class ACLSwitch(app_manager.RyuApp):
             print "\n[+] New flow detected: checking ACL."
             print "[?] New flow packet: " + str(pkt)
             priority = ofproto_v1_3.OFP_DEFAULT_PRIORITY
-            # Assume IPv4 packets only
-            # TODO add IPv6 support
-            # TODO block traffic in one direction
-            # NOTE I can check for IPv4 by checking eth.proto
-            data = pkt.get_protocols(ipv4.ipv4)
-            if (data):
-                ipv4_head = data[0]
-                pma = self.ipv4_match(pkt, ipv4_head, parser) # Priority Match Action
-                print "[#] " + str(pma) + "\n"
-            #    found_acl_match = self.ipv4_flow(ipv4_head, datapath, match, actions, msg, ofproto);
-            #    if found_acl_match == False:
-            #        priority = 1
-            #        if self.allow_flow(datapath, priority, match, actions, msg, ofproto) == False:
-            #            return
-            
-                # If a match was found in the ACL, then the new flow must
-                # have the associated match rules and actions assigned to it.
-                if pma != False:
-                    priority = pma[0]
-                    match = pma[1]
-                    actions = pma [2]
-                    # TODO this makes an error happen: OFPET_BAD_MATCH code 9 (a prerequisite was not met)
 
+            # verify if we have a valid buffer_id, if yes avoid to send both
+            # flow_mod & packet_out
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
                 self.add_flow(datapath, priority, match, actions, msg.buffer_id)
                 return
@@ -402,6 +303,7 @@ class ACLSwitchRESTInterface(ControllerBase):
         super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
         self.acl_switch_inst = data[acl_switch_instance_name]
     
+    # API call to return the current contents of the ACL.
     # example: curl -X GET http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["GET"])
     def return_acl(self, req, **kwargs):
@@ -409,6 +311,7 @@ class ACLSwitchRESTInterface(ControllerBase):
         body = json.dumps(acl)
         return Response(content_type="application/json", body=body)
 
+    # API call to add a rule to the ACL.
     # example: curl -X PUT -d '{"ip_src":"10.0.0.2", "ip_dst":"10.0.0.3", "tp_proto":"*", "port_src":"*", "port_dst":"*"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):

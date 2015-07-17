@@ -69,13 +69,13 @@ class ACLSwitch(app_manager.RyuApp):
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
             # Default priority is defined to be in the middle (0x8000 in 1.3)
             # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "rule_id ip_src ip_dst tp_proto port_src port_dst ofp13_match")
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst ofp13_match")
             # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
     ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
     _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
-    access_control_list = []
+    access_control_list = {}
     acl_id_count = 0
     connected_switches = []
 
@@ -148,17 +148,26 @@ class ACLSwitch(app_manager.RyuApp):
                                        int(port_dst))
         rule_id = self.acl_id_count
         self.acl_id_count += 1 # need to update to keep ids unique
-        newRule = self.ACL_ENTRY(rule_id = rule_id,ip_src=ip_src,
-                                 ip_dst=ip_dst, tp_proto=tp_proto,
-                                 port_src=port_src, port_dst=port_dst,
-                                 ofp13_match=match)
-        self.access_control_list.append(newRule)
+        newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
+                                 tp_proto=tp_proto, port_src=port_src,
+                                 port_dst=port_dst, ofp13_match=match)
+        self.access_control_list[str(rule_id)] = newRule
         return newRule
    
     # Remove a rule from the ACL then remove the associated flow table
     # entries from the appropriate switches.
     # @param rule_id - id of the rule to be removed.
-    #def delete_acl_rule(self):
+    # @return - true if the operation was successful, false otherwise.
+    def delete_acl_rule(self, rule_id):
+    # TODO switch the ACL storage from a list to a dict (k=id,v=entry) and remove the id field from an ACL_ENTRY. O(1) traversal is always nice. the acl_if_count field will make keeping track of the ids easy as well. Will also need to change the format_acl() function for the REST interface as well as a list will no longer being sent back once this change has been made.
+        if rule_id not in self.access_control_list:
+            return False
+        rule = self.access_control_list[rule_id]
+        del self.access_control_list[rule_id]
+        # remove rule from switches using entry
+        for switch in self.connected_switches:
+            datapath = api.get_datapath(self, switch)
+            self.delete_flow(datapath, rule.ofp13_match)
 
     # Proactively distribute a newly added rule to all connected switches.
     # It would seem intelligent to create the OFPMatch first then loop
@@ -178,7 +187,8 @@ class ACLSwitch(app_manager.RyuApp):
     # @param datapath - an OF enabled switch to communicate with
     # @param parser - parser for the switch passed through in datapath
     def distribute_rules_switch_startup(self, datapath):
-        for rule in self.access_control_list:
+        for rule_id in self.access_control_list:
+            rule = self.access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
             self.add_flow(datapath, priority, rule.ofp13_match, actions)
@@ -209,7 +219,7 @@ class ACLSwitch(app_manager.RyuApp):
     # Delete a flow table entry from a switch.
     # @param datapath - the switch to remove the flow table entry from.
     # @param entry - the flow table entry to remove.
-    def delete_flow(self, datapath):
+    def delete_flow(self, datapath, entry):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         # compile the instructions
@@ -326,11 +336,13 @@ class ACLSwitchRESTInterface(ControllerBase):
         # TODO return response indicating success
 
     # API call to remove a rule from the ACL.
-    # example: curl -X DELETE -d '{}' http://127.0.0.1:8080/acl_switch
+    # example: curl -X DELETE -d '{"rule_id":"0"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["DELETE"])
     def delete_rule(self, req, **kwargs):
         print "[+] Removing rule from ACL."
-        # TODO return response indicating success        
+        # TODO return response indicating succes
+        deleteReq = json.loads(req.body)
+        result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
 
     # Turn the ACL into a dictionary for that it can be easily converted
     # into JSON. The ofp13_match value does not need to be sent as this is
@@ -338,9 +350,10 @@ class ACLSwitchRESTInterface(ControllerBase):
     # @return - 
     def format_acl(self):
         acl_formatted = []
-        for rule in self.acl_switch_inst.access_control_list:
-            # append a dictionary to acl_formatted which contains ACL_ENTRY-ofp13_match
-            acl_formatted.append({"rule_id":rule.rule_id, "ip_src":rule.ip_src,
+        for rule_id in self.acl_switch_inst.access_control_list:
+            rule = self.acl_switch_inst.access_control_list[rule_id]
+            # Order the list as it's created by using rule_id
+            acl_formatted.insert(int(rule_id), {"rule_id":rule_id, "ip_src":rule.ip_src,
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
                                   "port_src": rule.port_src, "port_dst":rule.port_dst})
         return acl_formatted

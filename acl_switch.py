@@ -149,31 +149,35 @@ class ACLSwitch(app_manager.RyuApp):
     # @param tp_proto - the Transport Layer (layer 4) protocol to match
     # @param port_src - the Transport Layer source port to match
     # @param port_dst - the Transport Layer destination port to match
-    # @return - the newly created rule. This is useful in the case where a
-    #           single rule has been created and needs to be distributed.
+    # @return - a tuple indicating if the operation was a success, a message
+    #           to be returned to the client and the new created rule. This
+    #           is useful in the case where a single rule has been created
+    #           and needs to be distributed among switches.
     def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
-        rule_id = self.acl_id_count
+        rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst)
-        self.access_control_list[str(rule_id)] = newRule
-        return newRule
+        self.access_control_list[rule_id] = newRule
+        return (True, "Rule was created with id: " + rule_id + ".\n", newRule)
    
     # Remove a rule from the ACL then remove the associated flow table
     # entries from the appropriate switches.
     # @param rule_id - id of the rule to be removed.
-    # @return - true if the operation was successful, false otherwise.
+    # @return - a tuple indicating if the operation was a success and a
+    #           message to be returned to the client.
     def delete_acl_rule(self, rule_id):
-    # TODO switch the ACL storage from a list to a dict (k=id,v=entry) and remove the id field from an ACL_ENTRY. O(1) traversal is always nice. the acl_if_count field will make keeping track of the ids easy as well. Will also need to change the format_acl() function for the REST interface as well as a list will no longer being sent back once this change has been made.
         if rule_id not in self.access_control_list:
-            return False
+            return (False, "Invalid rule id given: " + rule_id + ".\n")
+        # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
         match = self.create_match(rule)
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, match)
+        return (True, "Rule with id \'" + rule_id + "\' was deleted.\n")
 
     # Proactively distribute a newly added rule to all connected switches.
     # It would seem intelligent to create the OFPMatch first then loop
@@ -338,22 +342,26 @@ class ACLSwitchRESTInterface(ControllerBase):
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):
         ruleReq = json.loads(req.body)
-        newRule = self.acl_switch_inst.add_acl_Rule(ruleReq["ip_src"],
+        result = self.acl_switch_inst.add_acl_Rule(ruleReq["ip_src"],
                                                     ruleReq["ip_dst"],
                                                     ruleReq["tp_proto"],
                                                     ruleReq["port_src"],
                                                     ruleReq["port_dst"])
-        self.acl_switch_inst.distribute_single_rule(newRule)
-        # TODO return response indicating success
+        self.acl_switch_inst.distribute_single_rule(result[2])
+        return Response(status=200, body=result[1])
 
     # API call to remove a rule from the ACL.
     # example: curl -X DELETE -d '{"rule_id":"0"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["DELETE"])
     def delete_rule(self, req, **kwargs):
-        # TODO return response indicating succes
         deleteReq = json.loads(req.body)
         result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
         # rule doesn't exist send back HTTP 400
+        if result[0] == True:
+            status = 200
+        else:
+            status = 400
+        return Response(status=status, body=result[1])
 
     # Turn the ACL into a dictionary for that it can be easily converted
     # into JSON.

@@ -69,7 +69,7 @@ class ACLSwitch(app_manager.RyuApp):
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
             # Default priority is defined to be in the middle (0x8000 in 1.3)
             # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst ofp13_match")
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
             # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
     ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
     _CONTEXTS = {"wsgi":WSGIApplication}
@@ -109,35 +109,38 @@ class ACLSwitch(app_manager.RyuApp):
     def acl_size(self):
         return len(self.access_control_list)
 
-    def create_match(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
+    # Create an OFPMatch instance based on the contents of an ACL_ENTRY.
+    # @param rule - the entry to create an OFPMatch instance from
+    # @return - the OFPMatch instance
+    def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
         match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                            ethernet.ether.ETH_TYPE_IP)
-        if (ip_src != "*"):
+        if (rule.ip_src != "*"):
             match.append_field(ofproto_v1_3.OXM_OF_IPV4_SRC,
-                               struct.unpack("!I", socket.inet_aton(ip_src))[0])
-        if (ip_dst != "*"):
+                               struct.unpack("!I", socket.inet_aton(rule.ip_src))[0])
+        if (rule.ip_dst != "*"):
             match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
-                               struct.unpack("!I", socket.inet_aton(ip_dst))[0])
-        if (tp_proto != "*"):
-            if (tp_proto == "tcp"):
+                               struct.unpack("!I", socket.inet_aton(rule.ip_dst))[0])
+        if (rule.tp_proto != "*"):
+            if (rule.tp_proto == "tcp"):
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
                                    ipv4.inet.IPPROTO_TCP)
-                if (port_src != "*"):
+                if (rule.port_src != "*"):
                     match.append_field(ofproto_v1_3.OXM_OF_TCP_SRC,
-                                       int(port_src))
-                if (port_src != "*"):
+                                       int(rule.port_src))
+                if (rule.port_src != "*"):
                     match.append_field(ofproto_v1_3.OXM_OF_TCP_DST,
-                                       int(port_dst))
-            elif (tp_proto == "udp"):
+                                       int(rule.port_dst))
+            elif (rule.tp_proto == "udp"):
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
                                    ipv4.inet.IPPROTO_UDP)
-                if (port_src != "*"):
+                if (rule.port_src != "*"):
                     match.append_field(ofproto_v1_3.OXM_OF_UDP_SRC,
-                                       int(port_src))
-                if (port_src != "*"):
+                                       int(rule.port_src))
+                if (rule.port_src != "*"):
                     match.append_field(ofproto_v1_3.OXM_OF_UDP_DST,
-                                       int(port_dst))
+                                       int(rule.port_dst))
         return match
 
     # Add a rule to the ACL by creating an entry then appending it to the list. 
@@ -149,12 +152,11 @@ class ACLSwitch(app_manager.RyuApp):
     # @return - the newly created rule. This is useful in the case where a
     #           single rule has been created and needs to be distributed.
     def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
-        match = self.create_match(ip_src, ip_dst, tp_proto, port_src, port_dst)
         rule_id = self.acl_id_count
         self.acl_id_count += 1 # need to update to keep ids unique
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst, ofp13_match=match)
+                                 port_dst=port_dst)
         self.access_control_list[str(rule_id)] = newRule
         return newRule
    
@@ -168,10 +170,7 @@ class ACLSwitch(app_manager.RyuApp):
             return False
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
-        # remove rule from switches using entry
-        match = self.create_match(rule.ip_src, rule.ip_dst, rule.tp_proto, rule.port_src, rule.port_dst)
-            # it doesn't like using a match if it has been stored, it isn't supported!
-            # TODO remove the stored opf13_match field from the acl_entry. Do this once rules can be removed.
+        match = self.create_match(rule)
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, match)
@@ -186,7 +185,8 @@ class ACLSwitch(app_manager.RyuApp):
             datapath = api.get_datapath(self, switch)
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            self.add_flow(datapath, priority, rule.ofp13_match, actions)
+            match = self.create_match(rule)
+            self.add_flow(datapath, priority, match, actions)
 
     # Proactively distribute hardcoded firewall rules to the switches.
     # This function is called on application start-up to distribute rules
@@ -198,7 +198,8 @@ class ACLSwitch(app_manager.RyuApp):
             rule = self.access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            self.add_flow(datapath, priority, rule.ofp13_match, actions)
+            match = self.create_match(rule)
+            self.add_flow(datapath, priority, match, actions)
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -355,8 +356,7 @@ class ACLSwitchRESTInterface(ControllerBase):
         # rule doesn't exist send back HTTP 400
 
     # Turn the ACL into a dictionary for that it can be easily converted
-    # into JSON. The ofp13_match value does not need to be sent as this is
-    # information that only the controller should worry about.
+    # into JSON.
     # @return - 
     def format_acl(self):
         acl_formatted = []

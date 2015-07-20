@@ -114,6 +114,8 @@ class ACLSwitch(app_manager.RyuApp):
     # @return - the OFPMatch instance
     def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
+        # Match IP layer (layer 3)
+        # Match Ipv4
         match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                            ethernet.ether.ETH_TYPE_IP)
         if (rule.ip_src != "*"):
@@ -122,8 +124,10 @@ class ACLSwitch(app_manager.RyuApp):
         if (rule.ip_dst != "*"):
             match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
                                struct.unpack("!I", socket.inet_aton(rule.ip_dst))[0])
+        # Match transport layer (layer 4) 
         if (rule.tp_proto != "*"):
             if (rule.tp_proto == "tcp"):
+                # Match TCP
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
                                    ipv4.inet.IPPROTO_TCP)
                 if (rule.port_src != "*"):
@@ -133,6 +137,7 @@ class ACLSwitch(app_manager.RyuApp):
                     match.append_field(ofproto_v1_3.OXM_OF_TCP_DST,
                                        int(rule.port_dst))
             elif (rule.tp_proto == "udp"):
+                # Match UDP
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
                                    ipv4.inet.IPPROTO_UDP)
                 if (rule.port_src != "*"):

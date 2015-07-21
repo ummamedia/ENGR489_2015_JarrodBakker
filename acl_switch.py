@@ -165,7 +165,7 @@ class ACLSwitch(app_manager.RyuApp):
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst)
         self.access_control_list[rule_id] = newRule
-        return (True, "Rule was created with id: " + rule_id + ".\n", newRule)
+        return (True, "Rule was created with id: " + rule_id + ".", newRule)
    
     # Remove a rule from the ACL then remove the associated flow table
     # entries from the appropriate switches.
@@ -174,7 +174,7 @@ class ACLSwitch(app_manager.RyuApp):
     #           message to be returned to the client.
     def delete_acl_rule(self, rule_id):
         if rule_id not in self.access_control_list:
-            return (False, "Invalid rule id given: " + rule_id + ".\n")
+            return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
@@ -182,7 +182,7 @@ class ACLSwitch(app_manager.RyuApp):
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, match)
-        return (True, "Rule with id \'" + rule_id + "\' was deleted.\n")
+        return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
     # Proactively distribute a newly added rule to all connected switches.
     # It would seem intelligent to create the OFPMatch first then loop

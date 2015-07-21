@@ -8,8 +8,10 @@
 #
 
 # Libraries
-import sys
+import json
+import requests
 import rule_syntax
+import sys
 
 # Constants
 MODE_ADD = "ADD"
@@ -53,21 +55,49 @@ def interface_main():
         else:
             print result
 
-# TODO add rule to the ACL
 def interface_add():
     print TEXT_HELP_ADD
-    result = text_input(MODE_ADD)
-    # check that enough items were passed
-    # check that addresses are valid e.g. valid IPv4 address or is '*'
-    # check that transport protocol is valid: TCP, UDP or '*'
-    # check that port numbers are valid e.g. port number is within valid range or is '*'
-    print result
+    buf_in = text_input(MODE_ADD)
+    items = buf_in.split(" ")
+    if len(items) != 5:
+        print "Expected 5 arguments, " + str(len(items)) + " given."
+        return
+    items[2] = items[2].lower()
+    errors = rule_syntax.check_rule(items[0], items[1], items[2], items[3], items[4])
+    if len(errors) != 0 :
+        print "Invalid rule provided:"
+        for e in errors:
+            print "\t" + e
+        return
+    add_req = rule_to_json(items[0], items[1], items[2], items[3], items[4])
+    resp = requests.put("http://127.0.0.1:8080/acl_switch", data=add_req,
+                        headers = {"Content-type": "application/json"})
+    print resp.text
 
-# TODO delete rule from the ACL
+def rule_to_json(ip_src, ip_dst, tp_proto, port_src, port_dst):
+   rule_dict = {}
+   rule_dict["ip_src"] = ip_src
+   rule_dict["ip_dst"] = ip_dst
+   rule_dict["tp_proto"] = tp_proto
+   rule_dict["port_src"] = port_src
+   rule_dict["port_dst"] = port_dst
+   return json.dumps(rule_dict)
+
 def interface_delete():
     print TEXT_HELP_DELETE
-    result = text_input(MODE_DELETE)
-    print result
+    buf_in = text_input(MODE_DELETE)
+    try:
+        int(buf_in)
+        if int(buf_in) < 0:
+            print "Rule id should be a positive integer."
+            return
+    except:
+        print "Rule id should be a positive integer."
+        return
+    delete_req = json.dumps({"rule_id": buf_in})
+    resp = requests.delete("http://127.0.0.1:8080/acl_switch", data=delete_req,
+                        headers = {"Content-type": "application/json"})
+    print resp.text
 
 # Evaluate the action based on the input given by the user
 # @param buf_in - input from the user

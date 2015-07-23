@@ -19,6 +19,7 @@ MODE_ADD = "ADD"
 MODE_DELETE = "DELETE"
 MODE_MAIN = "MAIN"
 TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
+TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
 TEXT_HELP_MAIN = "\tCommands: add, delete, show, help, quit"
 TEXT_HELP_ADD = "\tRule to add: ip_src ip_dst transport_protocol port_src port_dst"
 TEXT_HELP_DELETE = "\tRule to delete: rule_id"
@@ -95,8 +96,12 @@ def interface_add():
             print "\t" + e
         return
     add_req = rule_to_json(items[0], items[1], items[2], items[3], items[4])
-    resp = requests.put("http://127.0.0.1" + URL_ACL_SWITCH, data=add_req,
-                        headers = {"Content-type": "application/json"})
+    try:
+        resp = requests.put("http://127.0.0.1" + URL_ACL_SWITCH, data=add_req,
+                            headers = {"Content-type": "application/json"})
+    except:
+        print TEXT_ERROR_CONNECTION
+        return
     print resp.text
 
 # Convert rule fields into a JSON object for transmission.
@@ -131,15 +136,23 @@ def interface_delete():
         print "Rule id should be a positive integer."
         return
     delete_req = json.dumps({"rule_id": buf_in})
-    resp = requests.delete("http://127.0.0.1" + URL_ACL_SWITCH, data=delete_req,
-                        headers = {"Content-type": "application/json"})
+    try:
+        resp = requests.delete("http://127.0.0.1" + URL_ACL_SWITCH, data=delete_req,
+                               headers = {"Content-type": "application/json"})
+    except:
+        print TEXT_ERROR_CONNECTION
+        return
     print resp.text
 
 # Fetch the current contents of the ACL and display it to the user. The ACL
 # is requested using a REST API and should be returned as JSON.
 def get_acl():
     print "Fetching ACL..."
-    resp = requests.get("http://127.0.0.1" + URL_ACL_SWITCH)
+    try:
+        resp = requests.get("http://127.0.0.1" + URL_ACL_SWITCH)
+    except:
+        print TEXT_ERROR_CONNECTION
+        return
     acl = resp.json()
     table = PrettyTable(["Rule ID", "Source Address", "Destination Address",
                          "Transport Protocol", "Source Port",

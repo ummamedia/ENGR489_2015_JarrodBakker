@@ -48,7 +48,9 @@ from ryu.lib.packet import ethernet
 # I have added the below libraries to this code
 # Packet stuff
 from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
+from netaddr import IPAddress
 import socket, struct
 # REST interface
 import json
@@ -115,15 +117,27 @@ class ACLSwitch(app_manager.RyuApp):
     def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
         # Match IP layer (layer 3)
-        # Match Ipv4
-        match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
-                           ethernet.ether.ETH_TYPE_IP)
-        if (rule.ip_src != "*"):
-            match.append_field(ofproto_v1_3.OXM_OF_IPV4_SRC,
-                               struct.unpack("!I", socket.inet_aton(rule.ip_src))[0])
-        if (rule.ip_dst != "*"):
-            match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
-                               struct.unpack("!I", socket.inet_aton(rule.ip_dst))[0])
+        if (IPAddress(rule.ip_src).version == 4):
+            # Match IPv4
+            match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
+                               ethernet.ether.ETH_TYPE_IP)
+            if (rule.ip_src != "*"):
+                match.append_field(ofproto_v1_3.OXM_OF_IPV4_SRC,
+                                    int(IPAddress(rule.ip_src)))
+            if (rule.ip_dst != "*"):
+                match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
+                                   int(IPAddress(rule.ip_dst)))
+        else:
+            # Match IPv6
+            match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
+                               ethernet.ether.ETH_TYPE_IPV6)
+            if (rule.ip_src != "*"):
+                print"\n\n" + hex(IPAddress(rule.ip_src)) + "\n\n"
+                match.append_field(ofproto_v1_3.OXM_OF_IPV6_SRC,
+                                   IPAddress(rule.ip_src).words)
+            if (rule.ip_dst != "*"):
+                match.append_field(ofproto_v1_3.OXM_OF_IPV6_DST,
+                                   IPAddress(rule.ip_dst).words)
         # Match transport layer (layer 4) 
         if (rule.tp_proto != "*"):
             if (rule.tp_proto == "tcp"):

@@ -7,7 +7,8 @@
 # Author: Jarrod N. Bakker
 #
 
-import socket, struct
+#import socket, struct
+from netaddr import IPAddress
 
 # Check the ACL rule is valid.
 # @param ip_src - the IP address to check
@@ -19,10 +20,15 @@ import socket, struct
 #           tests passed and the rule is valid.
 def check_rule(ip_src, ip_dst, tp_proto, port_src, port_dst):
     errors = []
-    if not check_ipv4(ip_src):
-        errors.append("Invalid source IPv4 address: " + ip_src)
-    if not check_ipv4(ip_dst):
-        errors.append("Invalid destination IPv4 address: " + ip_dst)
+    ip_src_result = check_ip(ip_src)
+    ip_dst_result = check_ip(ip_dst)
+    if not ip_src_result:
+        errors.append("Invalid source IP address: " + ip_src)
+    if not ip_dst_result:
+        errors.append("Invalid destination IP address: " + ip_dst)
+    if ip_src_result and ip_dst_result:
+        if not check_ip_versions(ip_src, ip_dst):
+            errors.append("Unsupported rule: both IP addresses must be of the same version.")
     if not check_transport_protocol(tp_proto):
         errors.append("Invalid transport protocol (layer 4): " + tp_proto)
     if not check_port(port_src):
@@ -35,17 +41,24 @@ def check_rule(ip_src, ip_dst, tp_proto, port_src, port_dst):
                       port_dst)
     return errors
 
-# Check that a valid IPv4 address has been specified.
-# @param address - the IPv4 address to check
+# Check that a valid IP (v4 or v6) address has been specified.
+# @param address - the IP address to check.
 # @return - True if valid, False if not valid.
-def check_ipv4(address):
+def check_ip(address):
     try:
-        addr = struct.unpack("!I", socket.inet_aton(address))[0]
+        addr = IPAddress(address)
         return True
     except:
         if address == "*":
             return True
         return False
+
+# Check that the source and destination IP addresses are of the same versions.
+# @param ip_src - the source IP address to check.
+# @param ip_dst - the destination IP address to check.
+# @return - True if valid, False if not valid.
+def check_ip_versions(ip_src, ip_dst):
+    return IPAddress(ip_src).version == IPAddress(ip_dst).version
 
 # ACLSwtich can block all traffic (denoted by tp_proto == "*") or by
 # checking TCP or UDP port numbers. This function checks that the specified

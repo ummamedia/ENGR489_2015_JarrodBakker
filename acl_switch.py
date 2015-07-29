@@ -139,6 +139,7 @@ class ACLSwitch(app_manager.RyuApp):
                 match.append_field(ofproto_v1_3.OXM_OF_IPV6_DST,
                                    IPAddress(rule.ip_dst).words)
         # Match transport layer (layer 4) 
+        # Add IPv6 support - next header field must be used.
         if (rule.tp_proto != "*"):
             if (rule.tp_proto == "tcp"):
                 # Match TCP
@@ -341,7 +342,6 @@ class ACLSwitchRESTInterface(ControllerBase):
         self.acl_switch_inst = data[acl_switch_instance_name]
    
     # API call to return the size of the ACl.
-    # example curl -X GET http://127.0.0.1:8080/acl_switch/acl
     @route("acl_switch", url+"/acl", methods=["GET"])
     def return_acl_size(self, req, **kwargs):
         aclSize = {"acl_size":str(self.acl_switch_inst.acl_size())}
@@ -349,7 +349,6 @@ class ACLSwitchRESTInterface(ControllerBase):
         return Response(content_type="application/json", body=body)
 
     # API call to return the current contents of the ACL.
-    # example: curl -X GET http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["GET"])
     def return_acl(self, req, **kwargs):
         acl = self.format_acl()
@@ -357,10 +356,14 @@ class ACLSwitchRESTInterface(ControllerBase):
         return Response(content_type="application/json", body=body)
 
     # API call to add a rule to the ACL.
-    # example: curl -X PUT -d '{"ip_src":"10.0.0.2", "ip_dst":"10.0.0.3", "tp_proto":"*", "port_src":"*", "port_dst":"*"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):
-        ruleReq = json.loads(req.body)
+        try:
+            ruleReq = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        if not self.check_rule_json(ruleReq):
+            return Response(status=400, body="Invalid JSON passed.")
         result = self.acl_switch_inst.add_acl_Rule(ruleReq["ip_src"],
                                                     ruleReq["ip_dst"],
                                                     ruleReq["tp_proto"],
@@ -370,10 +373,12 @@ class ACLSwitchRESTInterface(ControllerBase):
         return Response(status=200, body=result[1])
 
     # API call to remove a rule from the ACL.
-    # example: curl -X DELETE -d '{"rule_id":"0"}' http://127.0.0.1:8080/acl_switch
     @route("acl_switch", url, methods=["DELETE"])
     def delete_rule(self, req, **kwargs):
-        deleteReq = json.loads(req.body)
+        try:
+            deleteReq = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
         result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
         # rule doesn't exist send back HTTP 400
         if result[0] == True:
@@ -384,7 +389,7 @@ class ACLSwitchRESTInterface(ControllerBase):
 
     # Turn the ACL into a dictionary for that it can be easily converted
     # into JSON.
-    # @return - 
+    # @return - the acl formated in JSON.
     def format_acl(self):
         acl_formatted = []
         for rule_id in self.acl_switch_inst.access_control_list:
@@ -394,4 +399,23 @@ class ACLSwitchRESTInterface(ControllerBase):
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
                                   "port_src": rule.port_src, "port_dst":rule.port_dst})
         return acl_formatted
+
+    # Check that incoming JSON for an ACL has the required 5 fields:
+    # "ip_src", "ip_dst", "tp_proto", "port_src" and "port_dst".
+    # @param ruleJSON - input from the client to check.
+    # @return - True if ruleJSON is valid, False otherwise.
+    def check_rule_json(self, ruleJSON):
+        if len(ruleJSON) != 5:
+            return False
+        if not "ip_src" in ruleJSON:
+            return False
+        if not "ip_dst" in ruleJSON:
+            return False
+        if not "tp_proto" in ruleJSON:
+            return False
+        if not "port_src" in ruleJSON:
+            return False
+        if not "port_dst" in ruleJSON:
+            return False
+        return True # everything is looking good!
 

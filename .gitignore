@@ -1,7 +1,7 @@
 # Ignore adding the following files to the repository
 runningInstructions.txt
 runStatelessFirewall.sh
+runStatefulFirewall.sh
 startNetwork.sh
 *.pyc
 *.log
-acl_switch.py.v1

@@ -20,4 +20,4 @@ Check Ryu version:
     $ ~/ryu/bin/ryu-manager --version
 
 Check Open vSwitch version:
-    $ vs-vswitchd --version
+    $ ovs-vswitchd --version

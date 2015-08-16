@@ -1,10 +1,18 @@
-# Test script template
 #
-###########################
-# Insert test details here.
-###########################
+# Test #: Test details here. 
 #
-# NOTE: The script assumes that the host is part of the 10.0.0.0/24 subnet.
+# Usage: python test#_.py <number of hosts in the network>
+#
+# Test success: 
+# Test failure: 
+#
+# Note:
+#   - Test output can be found in test_results.log
+#
+#   - Scapy is used for packet manipulation.
+#
+#   - The script assumes that the host is part of the 10.0.0.0/24
+#     subnet.
 #
 # Author: Jarrod N. Bakker
 
@@ -15,6 +23,8 @@ from scapy.all import *
 
 FILENAME_LOG_RESULTS = "test_results.log"
 NETWORK_IPV4 = "10.0.0."
+TEST_SCRIPT_NAME = "test#.py"
+TEST_SCRIPT_ARGS = "<number of hosts in the network>"
 
 """
  Fetch and return the IPv4 address of THIS host from interface h#_eth0
@@ -74,8 +84,8 @@ def test(num_hosts):
 if __name__ == "__main__":
     # Check command-line arguments
     if len(sys.argv) != 2:
-        print("ERROR: Usage: python test1_noRulesNoBlock.py <number of "
-               " hosts in network>")
+        print("ERROR: Usage: python " + TEST_SCRIPT_NAME + " " +
+               TEST_SCRIPT_ARGS)
         sys.exit(2)
     try:
         arg = int(sys.argv[1])

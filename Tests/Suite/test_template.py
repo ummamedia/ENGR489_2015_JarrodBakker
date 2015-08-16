@@ -23,6 +23,7 @@ from scapy.all import *
 
 FILENAME_LOG_RESULTS = "test_results.log"
 NETWORK_IPV4 = "10.0.0."
+TEST_NAME = "TESTNAME"
 TEST_SCRIPT_NAME = "test#.py"
 TEST_SCRIPT_ARGS = "<number of hosts in the network>"
 
@@ -71,8 +72,9 @@ def test(num_hosts):
         print("ERROR: Host IPv4 address not in 10.0.0.0/24 subnet.")
         sys.exit(1)
     neighbours = neighbour_ipv4(host_ip, num_hosts)
-    print("Begging test \'TESTNAME\'.\n\tCheck " + FILENAME_LOG_RESULTS
-          + " for test results once the test has finished.")
+    print("Beginning test \'" + TEST_NAME + "\'.\n\tCheck " +
+          FILENAME_LOG_RESULTS + " for test results once the test"
+          " has finished.")
     #logging.info("Beginning test \'TESTNAME\'") # test name here
     #logging.info("\t") # use for general information and test passed
     #logging.warning("\t") # use when something goes wrong i.e. test failed

@@ -14,10 +14,16 @@
 #   - The script assumes that the host is part of the 10.0.0.0/24
 #     subnet.
 #
+#   - The script assumes that the syntax for the REST commands is
+#     legal.
+#
 # Author: Jarrod N. Bakker
+#
 
+import json
 import logging
 import netifaces as ni
+import requests
 import sys
 from scapy.all import *
 

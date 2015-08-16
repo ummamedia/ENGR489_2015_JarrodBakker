@@ -1,8 +1,10 @@
 # An interactive command-line based interface for rule management of the
 # Stateless SDN Firewall application. The interface
 #
-# The interface currently assumes that the user understands the syntax
-# completely and does not check that input has been correctly provided.
+# The interface will perform syntax checking on the input before sending
+# it to ACLSwitch.
+#
+# Note that this application must be run on the controller itself.
 #
 # Author: Jarrod N. Bakker
 #
@@ -26,7 +28,7 @@ TEXT_HELP_DELETE = "\tRule to delete: rule_id"
 PROMPT_MAIN = "ACL Switch > "
 PROMPT_ADD = "ACL Switch (add) > "
 PROMPT_DELETE = "ACL Switch (delete) > "
-URL_ACL_SWITCH = ":8080/acl_switch"
+URL_ACL_SWITCH = "http://127.0.0.1:8080/acl_switch" # using loopback
 
 # Return input from the user
 # @param intMode - current mode of the interface e.g. add
@@ -97,7 +99,7 @@ def interface_add():
         return
     add_req = rule_to_json(items[0], items[1], items[2], items[3], items[4])
     try:
-        resp = requests.put("http://127.0.0.1" + URL_ACL_SWITCH, data=add_req,
+        resp = requests.put(URL_ACL_SWITCH, data=add_req,
                             headers = {"Content-type": "application/json"})
     except:
         print TEXT_ERROR_CONNECTION
@@ -137,7 +139,7 @@ def interface_delete():
         return
     delete_req = json.dumps({"rule_id": buf_in})
     try:
-        resp = requests.delete("http://127.0.0.1" + URL_ACL_SWITCH, data=delete_req,
+        resp = requests.delete(URL_ACL_SWITCH, data=delete_req,
                                headers = {"Content-type": "application/json"})
     except:
         print TEXT_ERROR_CONNECTION
@@ -149,7 +151,7 @@ def interface_delete():
 def get_acl():
     print "Fetching ACL..."
     try:
-        resp = requests.get("http://127.0.0.1" + URL_ACL_SWITCH)
+        resp = requests.get(URL_ACL_SWITCH)
     except:
         print TEXT_ERROR_CONNECTION
         return

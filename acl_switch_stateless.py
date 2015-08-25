@@ -91,11 +91,13 @@ class ACLSwitch(app_manager.RyuApp):
         wsgi = kwargs['wsgi']
         wsgi.register(ACLSwitchRESTInterface, {acl_switch_instance_name : self})
 
-    # Read in ACL rules from file filename. Note that the values passed
-    # through will have 'u' in front of them. This denotes that the string
-    # is Unicode encoded, as such it will affect the intended value.
-    # @param filename - the input file
-    # TODO handle case where file cannot be found
+    """
+    Read in ACL rules from file filename. Note that the values passed
+    through will have 'u' in front of them. This denotes that the string
+    is Unicode encoded, as such it will affect the intended value.
+
+    @param filename - the input file
+    """
     def import_from_file(self, filename):
         buf_in = open(filename)
         for line in buf_in:
@@ -106,14 +108,20 @@ class ACLSwitch(app_manager.RyuApp):
                               rule["tp_proto"], rule["port_src"],
                               rule["port_dst"])
     
-    # Return the size of the ACL.
-    # @return - the size of the ACL
+    """
+    Return the size of the ACL.
+
+    @return - the size of the ACL
+    """
     def acl_size(self):
         return len(self.access_control_list)
 
-    # Create an OFPMatch instance based on the contents of an ACL_ENTRY.
-    # @param rule - the entry to create an OFPMatch instance from
-    # @return - the OFPMatch instance
+    """
+    Create an OFPMatch instance based on the contents of an ACL_ENTRY.
+
+    @param rule - the entry to create an OFPMatch instance from
+    @return - the OFPMatch instance
+    """
     def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
         # Match IP layer (layer 3)
@@ -163,16 +171,19 @@ class ACLSwitch(app_manager.RyuApp):
                                        int(rule.port_dst))
         return match
 
-    # Add a rule to the ACL by creating an entry then appending it to the list. 
-    # @param ip_src - the source IP address to match
-    # @param ip_dst - the destination IP address to match
-    # @param tp_proto - the Transport Layer (layer 4) protocol to match
-    # @param port_src - the Transport Layer source port to match
-    # @param port_dst - the Transport Layer destination port to match
-    # @return - a tuple indicating if the operation was a success, a message
-    #           to be returned to the client and the new created rule. This
-    #           is useful in the case where a single rule has been created
-    #           and needs to be distributed among switches.
+    """
+    Add a rule to the ACL by creating an entry then appending it to the list. 
+    
+    @param ip_src - the source IP address to match
+    @param ip_dst - the destination IP address to match
+    @param tp_proto - the Transport Layer (layer 4) protocol to match
+    @param port_src - the Transport Layer source port to match
+    @param port_dst - the Transport Layer destination port to match
+    @return - a tuple indicating if the operation was a success, a message
+              to be returned to the client and the new created rule. This
+              is useful in the case where a single rule has been created
+              and needs to be distributed among switches.
+    """
     def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
@@ -182,11 +193,14 @@ class ACLSwitch(app_manager.RyuApp):
         self.access_control_list[rule_id] = newRule
         return (True, "Rule was created with id: " + rule_id + ".", newRule)
    
-    # Remove a rule from the ACL then remove the associated flow table
-    # entries from the appropriate switches.
-    # @param rule_id - id of the rule to be removed.
-    # @return - a tuple indicating if the operation was a success and a
-    #           message to be returned to the client.
+    """
+    Remove a rule from the ACL then remove the associated flow table
+    entries from the appropriate switches.
+    
+    @param rule_id - id of the rule to be removed.
+    @return - a tuple indicating if the operation was a success and a
+              message to be returned to the client.
+    """
     def delete_acl_rule(self, rule_id):
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
@@ -199,11 +213,14 @@ class ACLSwitch(app_manager.RyuApp):
             self.delete_flow(datapath, match)
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
-    # Proactively distribute a newly added rule to all connected switches.
-    # It would seem intelligent to create the OFPMatch first then loop
-    # HOWEVER you cannot assume that switches will be running the same
-    # version of OpenFlow.
-    # @param rule - the ACL rule to distributed among the switches.
+    """
+    Proactively distribute a newly added rule to all connected switches.
+    It would seem intelligent to create the OFPMatch first then loop
+    HOWEVER you cannot assume that switches will be running the same
+    version of OpenFlow.
+    
+    @param rule - the ACL rule to distributed among the switches.
+    """
     def distribute_single_rule(self, rule):
         for switch in self.connected_switches:
             datapath = api.get_datapath(self, switch)
@@ -212,11 +229,14 @@ class ACLSwitch(app_manager.RyuApp):
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
 
-    # Proactively distribute hardcoded firewall rules to the switches.
-    # This function is called on application start-up to distribute rules
-    # read in from a file.
-    # @param datapath - an OF enabled switch to communicate with
-    # @param parser - parser for the switch passed through in datapath
+    """
+    Proactively distribute hardcoded firewall rules to the switches.
+    This function is called on application start-up to distribute rules
+    read in from a file.
+    
+    @param datapath - an OF enabled switch to communicate with
+    @param parser - parser for the switch passed through in datapath
+    """
     def distribute_rules_switch_startup(self, datapath):
         for rule_id in self.access_control_list:
             rule = self.access_control_list[rule_id]
@@ -225,6 +245,9 @@ class ACLSwitch(app_manager.RyuApp):
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
 
+    """
+    Event handler used when a switch connects to the controller.
+    """
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
@@ -242,17 +265,22 @@ class ACLSwitch(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
+
         # The code below has been added by Jarrod N. Bakker
+        print ("[+] Switch connected with datapath id: " + str(ev.msg.datapath_id))
         # Take note of switches (via their datapaths)
         self.connected_switches.append(ev.msg.datapath_id)
         # Distribute the list of rules to the switch
         self.distribute_rules_switch_startup(datapath)
 
-    # Delete a flow table entry from a switch. OFPFC_DELETE for flow removal
-    # over OFPFC_DELETE_STRICT. The later matches the flow, wildcards and
-    # priority which is not needed in this case.
-    # @param datapath - the switch to remove the flow table entry from.
-    # @param entry - the flow table entry to remove.
+    """
+    Delete a flow table entry from a switch. OFPFC_DELETE for flow removal
+    over OFPFC_DELETE_STRICT. The later matches the flow, wildcards and
+    priority which is not needed in this case.
+    
+    @param datapath - the switch to remove the flow table entry from.
+    @param entry - the flow table entry to remove.
+    """
     def delete_flow(self, datapath, match):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -261,6 +289,9 @@ class ACLSwitch(app_manager.RyuApp):
                                 match=match, out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY)
         datapath.send_msg(mod)
 
+    """
+    Reactively add a flow table entry to a switch's flow table.
+    """
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -276,6 +307,10 @@ class ACLSwitch(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
+    """
+    Event handler used when a switch receives a packet that it cannot
+    match a flow table entry with.
+    """
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         # If you hit this you might want to increase
@@ -341,21 +376,27 @@ class ACLSwitchRESTInterface(ControllerBase):
         super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
         self.acl_switch_inst = data[acl_switch_instance_name]
    
-    # API call to return the size of the ACl.
+    """
+    API call to return the size of the ACl.
+    """
     @route("acl_switch", url+"/acl", methods=["GET"])
     def return_acl_size(self, req, **kwargs):
         aclSize = {"acl_size":str(self.acl_switch_inst.acl_size())}
         body = json.dumps(aclSize)
         return Response(content_type="application/json", body=body)
 
-    # API call to return the current contents of the ACL.
+    """
+    API call to return the current contents of the ACL.
+    """
     @route("acl_switch", url, methods=["GET"])
     def return_acl(self, req, **kwargs):
         acl = self.format_acl()
         body = json.dumps(acl)
         return Response(content_type="application/json", body=body)
 
-    # API call to add a rule to the ACL.
+    """
+    API call to add a rule to the ACL.
+    """
     @route("acl_switch", url, methods=["PUT"])
     def add_rule(self, req, **kwargs):
         try:
@@ -372,7 +413,9 @@ class ACLSwitchRESTInterface(ControllerBase):
         self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 
-    # API call to remove a rule from the ACL.
+    """
+    API call to remove a rule from the ACL.
+    """
     @route("acl_switch", url, methods=["DELETE"])
     def delete_rule(self, req, **kwargs):
         try:
@@ -387,9 +430,12 @@ class ACLSwitchRESTInterface(ControllerBase):
             status = 400
         return Response(status=status, body=result[1])
 
-    # Turn the ACL into a dictionary for that it can be easily converted
-    # into JSON.
-    # @return - the acl formated in JSON.
+    """
+    Turn the ACL into a dictionary for that it can be easily converted
+    into JSON.
+    
+    @return - the acl formated in JSON.
+    """
     def format_acl(self):
         acl_formatted = []
         for rule_id in self.acl_switch_inst.access_control_list:
@@ -400,10 +446,13 @@ class ACLSwitchRESTInterface(ControllerBase):
                                   "port_src": rule.port_src, "port_dst":rule.port_dst})
         return acl_formatted
 
-    # Check that incoming JSON for an ACL has the required 5 fields:
-    # "ip_src", "ip_dst", "tp_proto", "port_src" and "port_dst".
-    # @param ruleJSON - input from the client to check.
-    # @return - True if ruleJSON is valid, False otherwise.
+    """
+    Check that incoming JSON for an ACL has the required 5 fields:
+    "ip_src", "ip_dst", "tp_proto", "port_src" and "port_dst".
+    
+    @param ruleJSON - input from the client to check.
+    @return - True if ruleJSON is valid, False otherwise.
+    """
     def check_rule_json(self, ruleJSON):
         if len(ruleJSON) != 5:
             return False

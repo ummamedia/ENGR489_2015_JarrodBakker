@@ -80,13 +80,19 @@ class ACLSwitch(app_manager.RyuApp):
     _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
-    access_control_list = {} # rule_id:ACL_ENTRY
+    access_control_list = {} # rule_id:ACL_ENTRY # This is the master list
     acl_id_count = 0
-    connected_switches = {} # dpip:[roles]
+    connected_switches = {} # dpip:roles (a string)
+    rule_roles = {} # role:[rules]
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+        
+        # Start empty lists for the dict value
+        self.rule_roles[self.ROLE_DEFAULT] = []
+        self.rule_roles[self.ROLE_GATEWAY] = []
+
         try:
             self.import_from_file(self.ACL_FILENAME)
         except:
@@ -124,6 +130,8 @@ class ACLSwitch(app_manager.RyuApp):
             return (False, "Switch " + str(switch_id) + " does not exist.")
         old_roles = self.connected_switches[switch_id]
         self.connected_switches[switch_id] = old_roles + ", " + new_role
+        datapath = api.get_datapath(self, switch_id)
+        self.distribute_rules_role_set(datapath, new_role)
         return (True, "Switch " + str(switch_id) + " given role "
                 + new_role + ".")
 
@@ -210,6 +218,8 @@ class ACLSwitch(app_manager.RyuApp):
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role)
         self.access_control_list[rule_id] = newRule
+        self.rule_roles[role].append(rule_id)
+        print self.rule_roles[role]
         return (True, "Rule was created with id: " + rule_id + ".", newRule)
    
     """
@@ -226,6 +236,7 @@ class ACLSwitch(app_manager.RyuApp):
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
+        self.rule_roles[rule.role].remove(rule_id)
         for switch in self.connected_switches:
             match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
@@ -251,17 +262,20 @@ class ACLSwitch(app_manager.RyuApp):
             self.add_flow(datapath, priority, match, actions)
 
     """
-    Proactively distribute hardcoded firewall rules to the switches.
-    This function is called on application start-up to distribute rules
-    read in from a file.
+    Proactively distribute hardcoded firewall rules to the switch
+    specified using the datapath. Distribute the rules associated
+    with the role provided.
     
     @param datapath - an OF enabled switch to communicate with
-    @param parser - parser for the switch passed through in datapath
+    @param role - the role of the switch
     """
-    def distribute_rules_switch_startup(self, datapath):
-        for rule_id in self.access_control_list:
+    def distribute_rules_role_set(self, datapath, role):
+        for rule_id in self.rule_roles[role]:
             rule = self.access_control_list[rule_id]
-            self.distribute_single_rule(rule)
+            priority = self.OFP_MAX_PRIORITY
+            actions = []
+            match = self.create_match(rule)
+            self.add_flow(datapath, priority, match, actions)
 
     """
     Event handler used when a switch connects to the controller.
@@ -289,7 +303,7 @@ class ACLSwitch(app_manager.RyuApp):
         # Take note of switches (via their datapaths)
         self.connected_switches[ev.msg.datapath_id] = self.ROLE_DEFAULT
         # Distribute the list of rules to the switch
-        self.distribute_rules_switch_startup(datapath)
+        self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
 
     """
     Delete a flow table entry from a switch. OFPFC_DELETE for flow removal

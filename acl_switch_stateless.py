@@ -67,19 +67,22 @@ url = "/acl_switch"
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role")
+        # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
+    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
-            # Default priority is defined to be in the middle (0x8000 in 1.3)
-            # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
-            # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
-    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
+        # Default priority is defined to be in the middle (0x8000 in 1.3)
+        # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
+    ROLE_DEFAULT = "df"
+    ROLE_GATEWAY = "gw"
+
     _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
-    access_control_list = {}
+    access_control_list = {} # rule_id:ACL_ENTRY
     acl_id_count = 0
-    connected_switches = []
+    connected_switches = {} # dpip:[roles]
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
@@ -106,8 +109,24 @@ class ACLSwitch(app_manager.RyuApp):
             rule = json.loads(line)
             self.add_acl_Rule(rule["ip_src"], rule["ip_dst"],
                               rule["tp_proto"], rule["port_src"],
-                              rule["port_dst"])
+                              rule["port_dst"], rule["role"])
     
+    """
+    Assign a role to a switch then give it the appropriate rules.
+
+    @param switch_id - the datapath_id of a switch, switch_id is used
+                       for consistency with the API.
+    @param role - the new role to assign to a switch.
+    @return - result of the operation along with a message.
+    """
+    def assign_switch_role(self, switch_id, new_role):
+        if switch_id not in self.connected_switches:
+            return (False, "Switch " + str(switch_id) + " does not exist.")
+        old_roles = self.connected_switches[switch_id]
+        self.connected_switches[switch_id] = old_roles + ", " + new_role
+        return (True, "Switch " + str(switch_id) + " given role "
+                + new_role + ".")
+
     """
     Return the size of the ACL.
 
@@ -184,12 +203,12 @@ class ACLSwitch(app_manager.RyuApp):
               is useful in the case where a single rule has been created
               and needs to be distributed among switches.
     """
-    def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
+    def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst)
+                                 port_dst=port_dst, role=role)
         self.access_control_list[rule_id] = newRule
         return (True, "Rule was created with id: " + rule_id + ".", newRule)
    
@@ -207,22 +226,24 @@ class ACLSwitch(app_manager.RyuApp):
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
-        match = self.create_match(rule)
         for switch in self.connected_switches:
+            match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, match)
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
     """
     Proactively distribute a newly added rule to all connected switches.
-    It would seem intelligent to create the OFPMatch first then loop
-    HOWEVER you cannot assume that switches will be running the same
-    version of OpenFlow.
+    It is necessary to check the a switch is not given a rule for which
+    it is not allowed to have. This is done by comparing roles.
     
     @param rule - the ACL rule to distributed among the switches.
     """
     def distribute_single_rule(self, rule):
         for switch in self.connected_switches:
+            switch_roles = self.connected_switches[switch]
+            if rule.role not in switch_roles:
+                continue
             datapath = api.get_datapath(self, switch)
             priority = self.OFP_MAX_PRIORITY
             actions = []
@@ -240,10 +261,7 @@ class ACLSwitch(app_manager.RyuApp):
     def distribute_rules_switch_startup(self, datapath):
         for rule_id in self.access_control_list:
             rule = self.access_control_list[rule_id]
-            priority = self.OFP_MAX_PRIORITY
-            actions = []
-            match = self.create_match(rule)
-            self.add_flow(datapath, priority, match, actions)
+            self.distribute_single_rule(rule)
 
     """
     Event handler used when a switch connects to the controller.
@@ -269,7 +287,7 @@ class ACLSwitch(app_manager.RyuApp):
         # The code below has been added by Jarrod N. Bakker
         print ("[+] Switch connected with datapath id: " + str(ev.msg.datapath_id))
         # Take note of switches (via their datapaths)
-        self.connected_switches.append(ev.msg.datapath_id)
+        self.connected_switches[ev.msg.datapath_id] = self.ROLE_DEFAULT
         # Distribute the list of rules to the switch
         self.distribute_rules_switch_startup(datapath)
 
@@ -377,6 +395,36 @@ class ACLSwitchRESTInterface(ControllerBase):
         self.acl_switch_inst = data[acl_switch_instance_name]
    
     """
+    API call to show the switches and the roles associated with them.
+    """
+    @route("acl_switch", url+"/switch_role", methods=["GET"])
+    def return_switch_role(self, req, **kwargs):
+        body = json.dumps(self.acl_switch_inst.connected_switches)
+        return Response(content_type="application/json", body=body)
+
+    """
+    API call to assign a role to a  switch.
+    """
+    @route("acl_switch", url+"/switch_role", methods=["PUT"])
+    def assign_switch_role(self, req, **kwargs):
+        try:
+            assignReq = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        try:
+            switch_id = int(assignReq["switch_id"])
+            new_role = assignReq["new_role"]
+        except:
+            return Response(status=400, body="Invalid JSON passed.")
+        result = self.acl_switch_inst.assign_switch_role(switch_id,
+                                                         new_role)
+        if result == True:
+            return Response(status=200, body=result[1])
+        else:
+            return Response(status=400, body=result[1])
+
+
+    """
     API call to return the size of the ACl.
     """
     @route("acl_switch", url+"/acl", methods=["GET"])
@@ -409,7 +457,8 @@ class ACLSwitchRESTInterface(ControllerBase):
                                                     ruleReq["ip_dst"],
                                                     ruleReq["tp_proto"],
                                                     ruleReq["port_src"],
-                                                    ruleReq["port_dst"])
+                                                    ruleReq["port_dst"],
+                                                    ruleReq["role"])
         self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 
@@ -443,7 +492,8 @@ class ACLSwitchRESTInterface(ControllerBase):
             # Order the list as it's created by using rule_id
             acl_formatted.insert(int(rule_id), {"rule_id":rule_id, "ip_src":rule.ip_src,
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
-                                  "port_src": rule.port_src, "port_dst":rule.port_dst})
+                                  "port_src":rule.port_src, "port_dst":rule.port_dst,
+                                  "role":rule.role})
         return acl_formatted
 
     """
@@ -454,7 +504,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     @return - True if ruleJSON is valid, False otherwise.
     """
     def check_rule_json(self, ruleJSON):
-        if len(ruleJSON) != 5:
+        if len(ruleJSON) != 6:
             return False
         if not "ip_src" in ruleJSON:
             return False
@@ -465,6 +515,8 @@ class ACLSwitchRESTInterface(ControllerBase):
         if not "port_src" in ruleJSON:
             return False
         if not "port_dst" in ruleJSON:
+            return False
+        if not "role" in ruleJSON:
             return False
         return True # everything is looking good!
 

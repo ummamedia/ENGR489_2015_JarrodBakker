@@ -1,4 +1,5 @@
 # Ignore adding the following files to the repository
 runningInstructions.txt
+*.py~
 *.pyc
 *.log

@@ -6,8 +6,8 @@
 #
 # Note that this application must be run on the controller itself.
 #
-# This file contains the logic for starting the interface program and
-# directing control to other interface functions.
+# This file contains the logic for adding and removing rules from the ACL
+# within ACLSwitch.
 #
 # Author: Jarrod N. Bakker
 #

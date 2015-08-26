@@ -1,20 +1,26 @@
 # An interactive command-line based interface for rule management of the
-# Stateless SDN Firewall application. The interface
+# Stateless SDN Firewall application.
 #
 # The interface will perform syntax checking on the input before sending
 # it to ACLSwitch.
 #
 # Note that this application must be run on the controller itself.
 #
+# This file contains the logic for starting the interface program and
+# directing control to other interface functions.
+#
 # Author: Jarrod N. Bakker
 #
 
 # Libraries
-import json
-from prettytable import PrettyTable
-import requests
-import rule_syntax
+import interface_role
+import interface_rule
+import interface_show
 import sys
+
+class ACLInterfaceMain:
+
+    def __init__(self):
 
 # Constants
 MODE_ADD = "ADD"
@@ -266,3 +272,4 @@ Start the interface.
 """
 if __name__ == "__main__":
     interface_main()
+

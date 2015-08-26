@@ -411,7 +411,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to show the switches and the roles associated with them.
     """
-    @route("acl_switch", url+"/switch_role", methods=["GET"])
+    @route("acl_switch", url+"/switch_roles", methods=["GET"])
     def return_switch_role(self, req, **kwargs):
         body = json.dumps(self.acl_switch_inst.connected_switches)
         return Response(content_type="application/json", body=body)
@@ -419,7 +419,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to assign a role to a  switch.
     """
-    @route("acl_switch", url+"/switch_role", methods=["PUT"])
+    @route("acl_switch", url+"/switch_roles", methods=["PUT"])
     def assign_switch_role(self, req, **kwargs):
         try:
             assignReq = json.loads(req.body)
@@ -450,7 +450,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to return the current contents of the ACL.
     """
-    @route("acl_switch", url, methods=["GET"])
+    @route("acl_switch", url+"/acl_rules", methods=["GET"])
     def return_acl(self, req, **kwargs):
         acl = self.format_acl()
         body = json.dumps(acl)
@@ -459,7 +459,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to add a rule to the ACL.
     """
-    @route("acl_switch", url, methods=["PUT"])
+    @route("acl_switch", url+"/acl_rules", methods=["PUT"])
     def add_rule(self, req, **kwargs):
         try:
             ruleReq = json.loads(req.body)
@@ -479,7 +479,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to remove a rule from the ACL.
     """
-    @route("acl_switch", url, methods=["DELETE"])
+    @route("acl_switch", url+"/acl_rules", methods=["DELETE"])
     def delete_rule(self, req, **kwargs):
         try:
             deleteReq = json.loads(req.body)

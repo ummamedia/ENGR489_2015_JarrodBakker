@@ -6,8 +6,9 @@
 #
 # Note that this application must be run on the controller itself.
 #
-# This file contains the logic for starting the interface program and
-# directing control to other interface functions.
+# This file contains the logic for handling the assignment or removal of
+# role to and from switches. This allows for much richer network security
+# policy enforcement.
 #
 # Author: Jarrod N. Bakker
 #

@@ -6,8 +6,9 @@
 #
 # Note that this application must be run on the controller itself.
 #
-# This file contains the logic for starting the interface program and
-# directing control to other interface functions.
+# This file contains the logic for fetching and displaying state from
+# ACL. This is limited to the contents of the ACL and switches with
+# their currently assigned roles.
 #
 # Author: Jarrod N. Bakker
 #

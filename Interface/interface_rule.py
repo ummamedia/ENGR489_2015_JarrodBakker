@@ -20,7 +20,7 @@ import rule_syntax
 class ACLInterfaceRule:
 
     # Constants
-    PROMPT_RULE = "ACL Switch (add) > "
+    PROMPT_RULE = "ACL Switch (rule) > "
     PROMPT_RULE_ADD = "ACL Switch (rule -> add) > "
     PROMPT_RULE_REMOVE = "ACL Switch (rule -> remove) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
@@ -77,18 +77,24 @@ class ACLInterfaceRule:
             print "Expected 6 arguments, " + str(len(items)) + " given."
             return
         items[2] = items[2].lower()
-        errors = rule_syntax.check_rule(items[0], items[1], items[2], items[3], items[4], items[5])
+        errors = rule_syntax.check_rule(items[0], items[1], items[2],
+                                        items[3], items[4], items[5])
         if len(errors) != 0 :
             print "Invalid rule provided:"
             for e in errors:
                 print "\t" + e
             return
-        add_req = rule_to_json(items[0], items[1], items[2], items[3], items[4], items[5])
+        add_req = self.rule_to_json(items[0], items[1], items[2],
+                                    items[3], items[4], items[5])
         try:
-            resp = requests.put(self.URL_ACLSWITCH_RULE, data=add_req,
+            resp = requests.post(self.URL_ACLSWITCH_RULE, data=add_req,
                                 headers = {"Content-type": "application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error creating resource, HTTP " + str(resp.status_code)
+                  + " returned.")
             return
         print resp.text
 
@@ -99,7 +105,7 @@ class ACLInterfaceRule:
     The ID is passed to ACLSwitch using a REST API as a JSON object.
     """
     def rule_remove(self):
-        print self.TEXT_HELP_DELETE
+        print self.TEXT_HELP_RULE_REMOVE
         buf_in = raw_input(self.PROMPT_RULE_REMOVE)
         try:
             int(buf_in)
@@ -115,6 +121,10 @@ class ACLInterfaceRule:
                                    headers = {"Content-type": "application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error deleting resource, HTTP " + str(resp.status_code)
+                  + " returned.")
             return
         print resp.text
 

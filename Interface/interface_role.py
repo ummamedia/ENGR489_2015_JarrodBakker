@@ -66,10 +66,14 @@ class ACLInterfaceRole:
         assign_req = json.dumps({"switch_id":new_assign[0],
                                  "new_role":new_assign[1]})
         try:
-            resp = requests.put(URL_ACLSWITCH_ROLE, data=assign_req,
+            resp = requests.put(self.URL_ACLSWITCH_ROLE, data=assign_req,
                                 headers = {"Content-type":"application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error modifying resource, HTTP " + str(resp.status_code)
+                  + " returned.")
             return
         print resp.text
 
@@ -94,10 +98,14 @@ class ACLInterfaceRole:
         remove_req = json.dumps({"switch_id":removal[0],
                                  "new_role":removal[1]})
         try:
-            resp = requests.put(URL_ACLSWITCH_ROLE, data=remove_req,
+            resp = requests.delete(self.URL_ACLSWITCH_ROLE, data=remove_req,
                                 headers = {"Content-type":"application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error deleting resource, HTTP " + str(resp.status_code)
+                  + " returned.")
             return
         print resp.text
 

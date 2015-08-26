@@ -74,7 +74,7 @@ class ACLInterfaceShow:
     def get_switches(self):
         print("Fetching switch information...")
         try:
-            resp = requests.get(self.URL_ACLSWITCH_ROLES)
+            resp = requests.get(self.URL_ACLSWITCH_ROLE)
         except:
             print self.TEXT_ERROR_CONNECTION
             return

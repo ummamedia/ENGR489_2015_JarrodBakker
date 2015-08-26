@@ -33,8 +33,8 @@ class ACLInterfaceShow:
     each one.
     """
     def __init__(self):
-        print TEXT_HELP_SHOW
-        buf_in = raw_input(PROMPT_SHOW)
+        print self.TEXT_HELP_SHOW
+        buf_in = raw_input(self.PROMPT_SHOW)
         if buf_in == "acl":
             self.get_acl()
         elif buf_in == "switch":

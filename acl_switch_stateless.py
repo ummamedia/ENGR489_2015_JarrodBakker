@@ -459,7 +459,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to add a rule to the ACL.
     """
-    @route("acl_switch", url+"/acl_rules", methods=["PUT"])
+    @route("acl_switch", url+"/acl_rules", methods=["POST"])
     def add_rule(self, req, **kwargs):
         try:
             ruleReq = json.loads(req.body)

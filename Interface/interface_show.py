@@ -24,7 +24,7 @@ class ACLInterfaceShow:
     PROMPT_SHOW = "ACL Switch (show) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_SHOW = "\tacl OR switch"
+    TEXT_HELP_SHOW = "\trole OR rule"
     URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
     URL_ACLSWITCH_RULE = "http://127.0.0.1:8080/acl_switch/acl_rules" # using loopback
 
@@ -36,9 +36,9 @@ class ACLInterfaceShow:
     def __init__(self):
         print self.TEXT_HELP_SHOW
         buf_in = raw_input(self.PROMPT_SHOW)
-        if buf_in == "acl":
+        if buf_in == "rule":
             self.get_acl()
-        elif buf_in == "switch":
+        elif buf_in == "role":
             self.get_switches()
         else:
             print(self.TEXT_ERROR_SYNTAX + "\n" + self.TEXT_HELP_SHOW) # syntax error

@@ -53,6 +53,9 @@ class ACLInterfaceRole:
         print self.TEXT_HELP_ROLE_ASSIGN
         buf_in = raw_input(self.PROMPT_ROLE_ASSIGN)
         new_assign = buf_in.split(" ")
+        if len(new_assign) != 2:
+            print("Expect 2 arguments, " + str(len(new_assign)) + " given.")
+            return
         try:
             int(new_assign[0])
             if int(new_assign[0]) < 1:
@@ -74,7 +77,7 @@ class ACLInterfaceRole:
             return
         if resp.status_code != 200:
             print("Error modifying resource, HTTP " + str(resp.status_code)
-                  + " returned.")
+                  + str(resp.text))
             return
         print resp.text
 
@@ -85,6 +88,9 @@ class ACLInterfaceRole:
         print self.TEXT_HELP_ROLE_REMOVE
         buf_in = raw_input(self.PROMPT_ROLE_REMOVE)
         removal = buf_in.split(" ")
+        if len(removal) != 2:
+            print("Expect 2 arguments, " + str(len(removal)) + " given.")
+            return
         try:
             int(removal[0])
             if int(removal[0]) < 1:
@@ -106,7 +112,7 @@ class ACLInterfaceRole:
             return
         if resp.status_code != 200:
             print("Error deleting resource, HTTP " + str(resp.status_code)
-                  + " returned.")
+                  + str(resp.text))
             return
         print resp.text
 

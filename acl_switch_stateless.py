@@ -82,7 +82,7 @@ class ACLSwitch(app_manager.RyuApp):
     # Fields
     access_control_list = {} # rule_id:ACL_ENTRY # This is the master list
     acl_id_count = 0
-    connected_switches = {} # dpip:roles (a string)
+    connected_switches = {} # dpip:[roles]
     rule_roles = {} # role:[rules]
 
     def __init__(self, *args, **kwargs):
@@ -125,15 +125,36 @@ class ACLSwitch(app_manager.RyuApp):
     @param role - the new role to assign to a switch.
     @return - result of the operation along with a message.
     """
-    def assign_switch_role(self, switch_id, new_role):
+    def switch_role_assign(self, switch_id, new_role):
         if switch_id not in self.connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
-        old_roles = self.connected_switches[switch_id]
-        self.connected_switches[switch_id] = old_roles + ", " + new_role
+        self.connected_switches[switch_id].append(new_role)
         datapath = api.get_datapath(self, switch_id)
         self.distribute_rules_role_set(datapath, new_role)
         return (True, "Switch " + str(switch_id) + " given role "
                 + new_role + ".")
+
+    """
+    Remove a role assignment from a switch then remove the respective
+    rules from the switch. Assumes that once the role has been removed
+    the respective rules will be successfully removed from the switches.
+
+    @param switch_id - the datapath_id of a switch, switch_id is used
+                       for consistency with the API.
+    @param old_role - the role to remove from a switch.
+    @return - result of the operation along with a message.
+    """
+    def switch_role_remove(self, switch_id, old_role):
+        if switch_id not in self.connected_switches:
+            return (False, "Switch " + str(switch_id) + " does not exist.")
+        self.connected_switches[switch_id].remove(old_role)
+        datapath = api.get_datapath(self, switch_id)
+        # TODO
+        # loop through list of rules, sending delete flow requests to rules where rule.role == old_role
+        # create match for the rule
+        # self.delete_flow(...)
+        return (True, "Switch " + str(switch_id) + " had role "
+                + old_role + " removed.")
 
     """
     Return the size of the ACL.
@@ -231,6 +252,7 @@ class ACLSwitch(app_manager.RyuApp):
               message to be returned to the client.
     """
     def delete_acl_rule(self, rule_id):
+        # TODO remove rule using role information as the rule won't be present on all switches
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
@@ -238,6 +260,8 @@ class ACLSwitch(app_manager.RyuApp):
         del self.access_control_list[rule_id]
         self.rule_roles[rule.role].remove(rule_id)
         for switch in self.connected_switches:
+            if rule.role not in self.connected_switches[switch]:
+                continue
             match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, match)
@@ -301,7 +325,7 @@ class ACLSwitch(app_manager.RyuApp):
         # The code below has been added by Jarrod N. Bakker
         print ("[+] Switch connected with datapath id: " + str(ev.msg.datapath_id))
         # Take note of switches (via their datapaths)
-        self.connected_switches[ev.msg.datapath_id] = self.ROLE_DEFAULT
+        self.connected_switches[ev.msg.datapath_id] = [self.ROLE_DEFAULT]
         # Distribute the list of rules to the switch
         self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
 
@@ -430,12 +454,13 @@ class ACLSwitchRESTInterface(ControllerBase):
             new_role = assignReq["new_role"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.assign_switch_role(switch_id,
+        result = self.acl_switch_inst.switch_role_assign(switch_id,
                                                          new_role)
-        if result == True:
-            return Response(status=200, body=result[1])
+        if result[0] == True:
+            status = 200
         else:
-            return Response(status=400, body=result[1])
+            status = 400
+        return Response(status=status, body=result[1])
 
 
     """

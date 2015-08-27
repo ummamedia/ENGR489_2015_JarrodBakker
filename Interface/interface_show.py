@@ -86,6 +86,6 @@ class ACLInterfaceShow:
         switches = resp.json()
         table = PrettyTable(["Switch Datapath ID", "Roles"])
         for entry in switches:
-            table.add_row([entry, switches[entry]])
+            table.add_row([entry, ','.join(switches[entry])])
         print table
 

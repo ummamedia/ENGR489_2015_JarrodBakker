@@ -103,7 +103,7 @@ class ACLInterfaceRole:
             print "Invalid role provided. \'df\' or \'gw\' expected."
             return
         remove_req = json.dumps({"switch_id":removal[0],
-                                 "new_role":removal[1]})
+                                 "old_role":removal[1]})
         try:
             resp = requests.delete(self.URL_ACLSWITCH_ROLE, data=remove_req,
                                 headers = {"Content-type":"application/json"})

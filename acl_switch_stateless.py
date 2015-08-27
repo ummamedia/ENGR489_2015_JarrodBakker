@@ -149,10 +149,10 @@ class ACLSwitch(app_manager.RyuApp):
             return (False, "Switch " + str(switch_id) + " does not exist.")
         self.connected_switches[switch_id].remove(old_role)
         datapath = api.get_datapath(self, switch_id)
-        # TODO
-        # loop through list of rules, sending delete flow requests to rules where rule.role == old_role
-        # create match for the rule
-        # self.delete_flow(...)
+        for rule_id in self.rule_roles[old_role]:
+            rule = self.access_control_list[rule_id]
+            match = self.create_match(rule)
+            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
         return (True, "Switch " + str(switch_id) + " had role "
                 + old_role + " removed.")
 
@@ -252,7 +252,6 @@ class ACLSwitch(app_manager.RyuApp):
               message to be returned to the client.
     """
     def delete_acl_rule(self, rule_id):
-        # TODO remove rule using role information as the rule won't be present on all switches
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
@@ -264,7 +263,7 @@ class ACLSwitch(app_manager.RyuApp):
                 continue
             match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
-            self.delete_flow(datapath, match)
+            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
     """
@@ -330,19 +329,21 @@ class ACLSwitch(app_manager.RyuApp):
         self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
 
     """
-    Delete a flow table entry from a switch. OFPFC_DELETE for flow removal
-    over OFPFC_DELETE_STRICT. The later matches the flow, wildcards and
-    priority which is not needed in this case.
+    Delete a flow table entry from a switch. OFPFC_DELETE_STRICT is used
+    as you only want to remove exact matches of the rule. 
     
     @param datapath - the switch to remove the flow table entry from.
-    @param entry - the flow table entry to remove.
+    @param priority - priority of the rule to remove.
+    @param match - the flow table entry to remove.
     """
-    def delete_flow(self, datapath, match):
+    def delete_flow(self, datapath, priority, match):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        command = ofproto.OFPFC_DELETE
+        command = ofproto.OFPFC_DELETE_STRICT
         mod = parser.OFPFlowMod(datapath=datapath, command=command,
-                                match=match, out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY)
+                                priority=priority, match=match,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY)
         datapath.send_msg(mod)
 
     """
@@ -441,10 +442,10 @@ class ACLSwitchRESTInterface(ControllerBase):
         return Response(content_type="application/json", body=body)
 
     """
-    API call to assign a role to a  switch.
+    API call to assign a role to a switch.
     """
     @route("acl_switch", url+"/switch_roles", methods=["PUT"])
-    def assign_switch_role(self, req, **kwargs):
+    def switch_role_assign(self, req, **kwargs):
         try:
             assignReq = json.loads(req.body)
         except:
@@ -462,6 +463,27 @@ class ACLSwitchRESTInterface(ControllerBase):
             status = 400
         return Response(status=status, body=result[1])
 
+    """
+    API call to remove a role assignment from a switch.
+    """
+    @route("acl_switch", url+"/switch_roles", methods=["DELETE"])
+    def switch_role_remove(self, req, **kwargs):
+        try:
+            removeReq = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        try:
+            switch_id = int(removeReq["switch_id"])
+            old_role = removeReq["old_role"]
+        except:
+            return Response(status=400, body="Invalid JSON passed.")
+        result = self.acl_switch_inst.switch_role_remove(switch_id,
+                                                         old_role)
+        if result[0] == True:
+            status = 200
+        else:
+            status = 400
+        return Response(status=status, body=result[1])
 
     """
     API call to return the size of the ACl.
@@ -477,7 +499,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     @route("acl_switch", url+"/acl_rules", methods=["GET"])
     def return_acl(self, req, **kwargs):
-        acl = self.format_acl()
+        acl = self.format_acl_output()
         body = json.dumps(acl)
         return Response(content_type="application/json", body=body)
 
@@ -485,7 +507,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     API call to add a rule to the ACL.
     """
     @route("acl_switch", url+"/acl_rules", methods=["POST"])
-    def add_rule(self, req, **kwargs):
+    def acl_rule_add(self, req, **kwargs):
         try:
             ruleReq = json.loads(req.body)
         except:
@@ -505,7 +527,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     API call to remove a rule from the ACL.
     """
     @route("acl_switch", url+"/acl_rules", methods=["DELETE"])
-    def delete_rule(self, req, **kwargs):
+    def acl_rule_remove(self, req, **kwargs):
         try:
             deleteReq = json.loads(req.body)
         except:
@@ -524,7 +546,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     
     @return - the acl formated in JSON.
     """
-    def format_acl(self):
+    def format_acl_output(self):
         acl_formatted = []
         for rule_id in self.acl_switch_inst.access_control_list:
             rule = self.acl_switch_inst.access_control_list[rule_id]

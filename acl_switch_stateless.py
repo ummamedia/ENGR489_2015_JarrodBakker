@@ -294,7 +294,7 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
         if role not in self.role_to_rules:
-            return (False, "The given role was not recognised.", None)
+            return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
@@ -302,7 +302,8 @@ class ACLSwitch(app_manager.RyuApp):
                                  port_dst=port_dst, role=role)
         for rule in self.access_control_list.values():
             if self.compare_acl_rules(newRule, rule):
-                return (False, "Provided rule already exists.", None)
+                return (False, "New rule was not created, it already "
+                        "exists.", None)
         self.access_control_list[rule_id] = newRule
         self.role_to_rules[role].append(rule_id)
         return (True, "Rule was created with id: " + rule_id + ".", newRule)

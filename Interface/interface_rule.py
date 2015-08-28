@@ -78,7 +78,7 @@ class ACLInterfaceRule:
             return
         items[2] = items[2].lower()
         errors = rule_syntax.check_rule(items[0], items[1], items[2],
-                                        items[3], items[4], items[5])
+                                        items[3], items[4])
         if len(errors) != 0 :
             print "Invalid rule provided:"
             for e in errors:

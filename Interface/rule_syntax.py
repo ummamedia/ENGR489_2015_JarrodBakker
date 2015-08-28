@@ -11,6 +11,7 @@ from netaddr import IPAddress
 
 """
 Check the ACL rule is valid.
+
 @param ip_src - the IP address to check
 @param ip_dst - the IP address to check
 @param tp_proto - the transport layer (layer 4) protocol to check
@@ -19,7 +20,7 @@ Check the ACL rule is valid.
 @return - a list of the error messages. An empty list means that all
           tests passed and the rule is valid.
 """
-def check_rule(ip_src, ip_dst, tp_proto, port_src, port_dst, role):
+def check_rule(ip_src, ip_dst, tp_proto, port_src, port_dst):
     errors = []
     ip_src_result = check_ip(ip_src)
     ip_dst_result = check_ip(ip_dst)
@@ -40,12 +41,11 @@ def check_rule(ip_src, ip_dst, tp_proto, port_src, port_dst, role):
         errors.append("Unsupported rule: transport protocol: " + tp_proto +
                       " source port: " + port_src + " destination port: " +
                       port_dst)
-    if not check_role(role):
-        errors.append("Invalid role provided: " + role)
     return errors
 
 """
 Check that a valid IP (v4 or v6) address has been specified.
+
 @param address - the IP address to check.
 @return - True if valid, False if not valid.
 """
@@ -60,6 +60,7 @@ def check_ip(address):
 
 """
 Check that the source and destination IP addresses are of the same versions.
+
 @param ip_src - the source IP address to check.
 @param ip_dst - the destination IP address to check.
 @return - True if valid, False if not valid.
@@ -71,6 +72,7 @@ def check_ip_versions(ip_src, ip_dst):
 ACLSwtich can block all traffic (denoted by tp_proto == "*") or by
 checking TCP or UDP port numbers. This function checks that the specified
 transport layer (layer 4) protocol is either "*", TCP or UDP.
+
 @param protocol - the transport layer (layer 4) protocol to check
 @return - True if valid, False if not valid.
 """
@@ -79,6 +81,7 @@ def check_transport_protocol(protocol):
 
 """
 A port is valid if it is either "*" or between 0 and 65535 inclusive
+
 @param port - the port number to check
 @return - True if valid, False if not valid.
 """
@@ -97,6 +100,7 @@ def check_port(port):
 An OFPMatch cannot have both TCP and UDP information in it. Therefore
 an ACL rule is not valid if the tp_proto is "*" and port numbers are
 specified.
+
 @param tp_proto - the transport layer (layer 4) protocol to check
 @param port_src - the source port to check
 @param port_dst - the destination port to check
@@ -104,14 +108,6 @@ specified.
 """
 def check_transport_valid(tp_proto, port_src, port_dst):
     return not(tp_proto == "*" and (port_src != "*" or port_dst != "*"))
-
-"""
-Only "df" or "gw" can be assigned as roles currently.
-@param role - the role to check
-@return - True if valid, False if not valid.
-"""
-def check_role(role):
-    return (role == "gw" or role == "df")
 
 if __name__ == "__main__":
     while(1):

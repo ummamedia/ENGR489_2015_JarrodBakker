@@ -128,6 +128,9 @@ class ACLSwitch(app_manager.RyuApp):
     def switch_role_assign(self, switch_id, new_role):
         if switch_id not in self.connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
+        if new_role in self.connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " already has role "
+                    + str(new_role) + ".")
         self.connected_switches[switch_id].append(new_role)
         datapath = api.get_datapath(self, switch_id)
         self.distribute_rules_role_set(datapath, new_role)
@@ -147,6 +150,9 @@ class ACLSwitch(app_manager.RyuApp):
     def switch_role_remove(self, switch_id, old_role):
         if switch_id not in self.connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
+        if old_role not in self.connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " does not have role "
+                    + str(old_role) + ".")
         self.connected_switches[switch_id].remove(old_role)
         datapath = api.get_datapath(self, switch_id)
         for rule_id in self.rule_roles[old_role]:
@@ -238,6 +244,7 @@ class ACLSwitch(app_manager.RyuApp):
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role)
+        # TODO check if we have already inserted this rule before
         self.access_control_list[rule_id] = newRule
         self.rule_roles[role].append(rule_id)
         print self.rule_roles[role]
@@ -533,7 +540,6 @@ class ACLSwitchRESTInterface(ControllerBase):
         except:
             return Response(status=400, body="Unable to parse JSON.")
         result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
-        # rule doesn't exist send back HTTP 400
         if result[0] == True:
             status = 200
         else:

@@ -51,7 +51,6 @@ from ryu.lib.packet import ipv4
 from ryu.lib.packet import ipv6
 from ryu.lib.packet import tcp
 from netaddr import IPAddress
-import socket, struct
 # REST interface
 import json
 from webob import Response
@@ -226,6 +225,17 @@ class ACLSwitch(app_manager.RyuApp):
         return match
 
     """
+    Compare the 5-tuple entries of two ACL rules. That is compare the
+    IP addresses, transport-layer protocol and port numbers.
+    """
+    def compare_acl_rules(self, rule_1, rule_2):
+        return ((IPAddress(rule_1.ip_src)==IPAddress(rule_2.ip_src)) and
+                (IPAddress(rule_1.ip_dst)==IPAddress(rule_2.ip_dst)) and
+                (rule_1.tp_proto==rule_2.tp_proto) and
+                (rule_1.port_src==rule_2.port_src) and
+                (rule_1.port_dst==rule_2.port_dst))
+
+    """
     Add a rule to the ACL by creating an entry then appending it to the list. 
     
     @param ip_src - the source IP address to match
@@ -245,6 +255,9 @@ class ACLSwitch(app_manager.RyuApp):
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role)
         # TODO check if we have already inserted this rule before
+        for rule in self.access_control_list.values():
+            if self.compare_acl_rules(newRule, rule):
+                return (False, "Provided rule already exists.", None)
         self.access_control_list[rule_id] = newRule
         self.rule_roles[role].append(rule_id)
         print self.rule_roles[role]
@@ -527,6 +540,8 @@ class ACLSwitchRESTInterface(ControllerBase):
                                                     ruleReq["port_src"],
                                                     ruleReq["port_dst"],
                                                     ruleReq["role"])
+        if result[0] == False:
+            return Response(status=400, body=result[1])
         self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 

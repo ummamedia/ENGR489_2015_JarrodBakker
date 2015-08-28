@@ -76,9 +76,7 @@ class ACLInterfaceRole:
             print self.TEXT_ERROR_CONNECTION
             return
         if resp.status_code != 200:
-            print("Error modifying resource, HTTP " + str(resp.status_code)
-                  + str(resp.text))
-            return
+            print("Error modifying resource, HTTP " + str(resp.status_code))
         print resp.text
 
     """
@@ -111,8 +109,6 @@ class ACLInterfaceRole:
             print self.TEXT_ERROR_CONNECTION
             return
         if resp.status_code != 200:
-            print("Error deleting resource, HTTP " + str(resp.status_code)
-                  + str(resp.text))
-            return
+            print("Error deleting resource, HTTP " + str(resp.status_code))
         print resp.text
 

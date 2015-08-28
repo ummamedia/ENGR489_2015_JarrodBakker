@@ -93,9 +93,7 @@ class ACLInterfaceRule:
             print self.TEXT_ERROR_CONNECTION
             return
         if resp.status_code != 200:
-            print("Error creating resource, HTTP " + str(resp.status_code)
-                  + " returned.")
-            return
+            print("Error creating resource, HTTP " + str(resp.status_code))
         print resp.text
 
 
@@ -123,8 +121,6 @@ class ACLInterfaceRule:
             print self.TEXT_ERROR_CONNECTION
             return
         if resp.status_code != 200:
-            print("Error deleting resource, HTTP " + str(resp.status_code)
-                  + " returned.")
-            return
+            print("Error deleting resource, HTTP " + str(resp.status_code))
         print resp.text
 

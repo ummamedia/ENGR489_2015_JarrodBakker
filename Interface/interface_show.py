@@ -24,9 +24,10 @@ class ACLInterfaceShow:
     PROMPT_SHOW = "ACL Switch (show) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_SHOW = "\trole OR rule"
+    TEXT_HELP_SHOW = "\trole, rule OR switch"
     URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
     URL_ACLSWITCH_RULE = "http://127.0.0.1:8080/acl_switch/acl_rules" # using loopback
+    URL_ACLSWITCH_SWITCH = "http://127.0.0.1:8080/acl_switch/switches" # using loopback
 
     """
     Show interface. The user has the option to either view the contents of the
@@ -39,7 +40,9 @@ class ACLInterfaceShow:
         if buf_in == "rule":
             self.get_acl()
         elif buf_in == "role":
-            self.get_switches()
+            self.get_role()
+        elif buf_in == "switch":
+            self.get_switch()
         else:
             print(self.TEXT_ERROR_SYNTAX + "\n" + self.TEXT_HELP_SHOW) # syntax error
 
@@ -69,13 +72,33 @@ class ACLInterfaceShow:
         print table
 
     """
+    Fetch a list of the currently available roles from the ACLSwitch.
+    """
+    def get_role(self):
+        print("Fetching role information...")
+        try:
+            resp = requests.get(self.URL_ACLSWITCH_ROLE)
+        except:
+            print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error fetching resource, HTTP " + str(resp.status_code)
+                  + " returned.")
+            return
+        roles = resp.json()
+        table = PrettyTable(["Roles"])
+        for entry in roles["Roles"]:
+            table.add_row(entry.split())
+        print table
+
+    """
     Fetch a list of the current switches and the roles associated with
     them from the ACLSwitch.
     """
-    def get_switches(self):
+    def get_switch(self):
         print("Fetching switch information...")
         try:
-            resp = requests.get(self.URL_ACLSWITCH_ROLE)
+            resp = requests.get(self.URL_ACLSWITCH_SWITCH)
         except:
             print self.TEXT_ERROR_CONNECTION
             return

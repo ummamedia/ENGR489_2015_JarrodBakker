@@ -74,7 +74,6 @@ class ACLSwitch(app_manager.RyuApp):
         # Default priority is defined to be in the middle (0x8000 in 1.3)
         # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     ROLE_DEFAULT = "df"
-    ROLE_GATEWAY = "gw"
 
     _CONTEXTS = {"wsgi":WSGIApplication}
 
@@ -82,15 +81,14 @@ class ACLSwitch(app_manager.RyuApp):
     access_control_list = {} # rule_id:ACL_ENTRY # This is the master list
     acl_id_count = 0
     connected_switches = {} # dpip:[roles]
-    rule_roles = {} # role:[rules]
+    role_to_rules = {} # role:[rules]
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         
         # Start empty lists for the dict value
-        self.rule_roles[self.ROLE_DEFAULT] = []
-        self.rule_roles[self.ROLE_GATEWAY] = []
+        self.role_to_rules[self.ROLE_DEFAULT] = []
 
         try:
             self.import_from_file(self.ACL_FILENAME)
@@ -117,6 +115,48 @@ class ACLSwitch(app_manager.RyuApp):
                               rule["port_dst"], rule["role"])
     
     """
+    List the currently available roles.
+
+    @return - a list of the currently available roles.
+    """
+    def role_list(self):
+        return self.role_to_rules.keys()
+
+    """
+    Create a role which can then be assigned to a switch.
+
+    @param new_role - the role to create.
+    @return - result of the operation along with a message.
+    """
+    def role_create(self, new_role):
+        if new_role in self.role_to_rules:
+            return (False, "Role " + new_role + " already exists.")
+        self.role_to_rules[new_role] = []
+        return (True, "Role " + new_role + " created.")
+
+    """
+    Delete a role. This can only be done once there are no rules
+    associated with the role.
+
+    @param role - the role to delete.
+    @return - result of the operation along with a message.
+    """
+    def role_delete(self, role):
+        if role == self.ROLE_DEFAULT:
+            return (False, "Role df cannot be deleted.")
+        if role not in self.role_to_rules:
+            return (False, "Role " + role + " does not exist.")
+        if self.role_to_rules[role]:
+            return (False, "Cannot delete role " + role +
+                    ", rules are still assoicated with it.")
+        for switch in self.connected_switches:
+            if role in self.connected_switches[switch]:
+                return (False, "Cannot delete role " + role +
+                        ", switches still have it assigned.")
+        del self.role_to_rules[role]
+        return (True, "Role " + role + " deleted.")
+
+    """
     Assign a role to a switch then give it the appropriate rules.
 
     @param switch_id - the datapath_id of a switch, switch_id is used
@@ -125,6 +165,8 @@ class ACLSwitch(app_manager.RyuApp):
     @return - result of the operation along with a message.
     """
     def switch_role_assign(self, switch_id, new_role):
+        if new_role not in self.role_to_rules:
+            return (False, "Role " + new_role + " does not exist.")
         if switch_id not in self.connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
         if new_role in self.connected_switches[switch_id]:
@@ -147,6 +189,8 @@ class ACLSwitch(app_manager.RyuApp):
     @return - result of the operation along with a message.
     """
     def switch_role_remove(self, switch_id, old_role):
+        if old_role not in self.role_to_rules:
+            return (False, "Role " + old_role + " does not exist.")
         if switch_id not in self.connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
         if old_role not in self.connected_switches[switch_id]:
@@ -154,7 +198,7 @@ class ACLSwitch(app_manager.RyuApp):
                     + str(old_role) + ".")
         self.connected_switches[switch_id].remove(old_role)
         datapath = api.get_datapath(self, switch_id)
-        for rule_id in self.rule_roles[old_role]:
+        for rule_id in self.role_to_rules[old_role]:
             rule = self.access_control_list[rule_id]
             match = self.create_match(rule)
             self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
@@ -249,18 +293,18 @@ class ACLSwitch(app_manager.RyuApp):
               and needs to be distributed among switches.
     """
     def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
+        if role not in self.role_to_rules:
+            return (False, "The given role was not recognised.", None)
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
         newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role)
-        # TODO check if we have already inserted this rule before
         for rule in self.access_control_list.values():
             if self.compare_acl_rules(newRule, rule):
                 return (False, "Provided rule already exists.", None)
         self.access_control_list[rule_id] = newRule
-        self.rule_roles[role].append(rule_id)
-        print self.rule_roles[role]
+        self.role_to_rules[role].append(rule_id)
         return (True, "Rule was created with id: " + rule_id + ".", newRule)
    
     """
@@ -277,7 +321,7 @@ class ACLSwitch(app_manager.RyuApp):
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
-        self.rule_roles[rule.role].remove(rule_id)
+        self.role_to_rules[rule.role].remove(rule_id)
         for switch in self.connected_switches:
             if rule.role not in self.connected_switches[switch]:
                 continue
@@ -313,7 +357,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param role - the role of the switch
     """
     def distribute_rules_role_set(self, datapath, role):
-        for rule_id in self.rule_roles[role]:
+        for rule_id in self.role_to_rules[role]:
             rule = self.access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
@@ -342,7 +386,6 @@ class ACLSwitch(app_manager.RyuApp):
         self.add_flow(datapath, 0, match, actions)
 
         # The code below has been added by Jarrod N. Bakker
-        print ("[+] Switch connected with datapath id: " + str(ev.msg.datapath_id))
         # Take note of switches (via their datapaths)
         self.connected_switches[ev.msg.datapath_id] = [self.ROLE_DEFAULT]
         # Distribute the list of rules to the switch
@@ -456,16 +499,64 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to show the switches and the roles associated with them.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["GET"])
-    def return_switch_role(self, req, **kwargs):
+    @route("acl_switch", url+"/switches", methods=["GET"])
+    def switch_role_list(self, req, **kwargs):
         body = json.dumps(self.acl_switch_inst.connected_switches)
         return Response(content_type="application/json", body=body)
 
     """
+    API call to return a list of the currently available roles.
+    """
+    @route("acl_switch", url+"/switch_roles", methods=["GET"])
+    def role_list(self, req, **kwargs):
+        body = json.dumps({"Roles":self.acl_switch_inst.role_list()})
+        return Response(content_type="application/json", body=body) 
+
+    """
+    API call to create a role.
+    """
+    @route("acl_switch", url+"/switch_roles", methods=["POST"])
+    def role_create(self, req, **kwargs):
+        try:
+            create_req = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        try:
+            role = create_req["role"]
+        except:
+            return Response(status=400, body="Invalid JSON passed.")
+        result = self.acl_switch_inst.role_create(role)
+        if result[0] == True:
+            status = 200
+        else:
+            status = 400
+        return Response(status=status, body=result[1])
+
+    """
+    API call to delete a role from ACLSwitch.
+    """
+    @route("acl_switch", url+"/switch_roles", methods=["DELETE"])
+    def role_delete(self, req, **kwargs):
+        try:
+            delete_req = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        try:
+            role = delete_req["role"]
+        except:
+            return Response(status=400, body="Invalid JSON passed.")
+        result = self.acl_switch_inst.role_delete(role)
+        if result[0] == True:
+            status = 200
+        else:
+            status = 400
+        return Response(status=status, body=result[1])
+
+    """
     API call to assign a role to a switch.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["PUT"])
-    def switch_role_assign(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_roles/assignment", methods=["PUT"])
+    def role_switch_assign(self, req, **kwargs):
         try:
             assignReq = json.loads(req.body)
         except:
@@ -486,8 +577,8 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     API call to remove a role assignment from a switch.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["DELETE"])
-    def switch_role_remove(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_roles/assignment", methods=["DELETE"])
+    def role_switch_remove(self, req, **kwargs):
         try:
             removeReq = json.loads(req.body)
         except:
@@ -518,7 +609,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     API call to return the current contents of the ACL.
     """
     @route("acl_switch", url+"/acl_rules", methods=["GET"])
-    def return_acl(self, req, **kwargs):
+    def list_acl(self, req, **kwargs):
         acl = self.format_acl_output()
         body = json.dumps(acl)
         return Response(content_type="application/json", body=body)

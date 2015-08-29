@@ -68,7 +68,7 @@ class ACLSwitch(app_manager.RyuApp):
     # Constants
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role")
         # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
-    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
+    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/config.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
         # Default priority is defined to be in the middle (0x8000 in 1.3)
@@ -107,12 +107,24 @@ class ACLSwitch(app_manager.RyuApp):
     def import_from_file(self, filename):
         buf_in = open(filename)
         for line in buf_in:
-            if line[0] == "#":
-                continue # Skip file comments
-            rule = json.loads(line)
-            self.add_acl_Rule(rule["ip_src"], rule["ip_dst"],
-                              rule["tp_proto"], rule["port_src"],
-                              rule["port_dst"], rule["role"])
+            if line[0] == "#" or not line.strip():
+                continue # Skip file comments and empty lines
+            try:
+               config = json.loads(line)
+            except:
+                print("[-] Line: " + line + "is not valid JSON.")
+                continue
+            if "rule" in config:
+                self.add_acl_Rule(config["rule"]["ip_src"],
+                                  config["rule"]["ip_dst"],
+                                  config["rule"]["tp_proto"],
+                                  config["rule"]["port_src"],
+                                  config["rule"]["port_dst"],
+                                  config["rule"]["role"])
+            elif "role" in config:
+                self.role_create(config["role"])
+            else:
+                print("[-] Line: " + line + "is not recognised JSON.")
     
     """
     List the currently available roles.
@@ -132,6 +144,7 @@ class ACLSwitch(app_manager.RyuApp):
         if new_role in self.role_to_rules:
             return (False, "Role " + new_role + " already exists.")
         self.role_to_rules[new_role] = []
+        print("[+] New role added: " + new_role)
         return (True, "Role " + new_role + " created.")
 
     """
@@ -154,6 +167,7 @@ class ACLSwitch(app_manager.RyuApp):
                 return (False, "Cannot delete role " + role +
                         ", switches still have it assigned.")
         del self.role_to_rules[role]
+        print("[+] Role deleted: " + role)
         return (True, "Role " + role + " deleted.")
 
     """
@@ -175,6 +189,7 @@ class ACLSwitch(app_manager.RyuApp):
         self.connected_switches[switch_id].append(new_role)
         datapath = api.get_datapath(self, switch_id)
         self.distribute_rules_role_set(datapath, new_role)
+        print("[+] Switch " + str(switch_id) + " assigned role: " + new_role)
         return (True, "Switch " + str(switch_id) + " given role "
                 + new_role + ".")
 
@@ -202,6 +217,7 @@ class ACLSwitch(app_manager.RyuApp):
             rule = self.access_control_list[rule_id]
             match = self.create_match(rule)
             self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+        print("[+] Switch " + str(switch_id) + " removed role: " + old_role)
         return (True, "Switch " + str(switch_id) + " had role "
                 + old_role + " removed.")
 
@@ -297,16 +313,18 @@ class ACLSwitch(app_manager.RyuApp):
             return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
-        newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
+        new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role)
         for rule in self.access_control_list.values():
-            if self.compare_acl_rules(newRule, rule):
+            if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
                         "exists.", None)
-        self.access_control_list[rule_id] = newRule
+        self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
-        return (True, "Rule was created with id: " + rule_id + ".", newRule)
+        print("[+] Rule " + str(new_rule) + " created with id: "
+              + str(rule_id))
+        return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
    
     """
     Remove a rule from the ACL then remove the associated flow table
@@ -329,6 +347,8 @@ class ACLSwitch(app_manager.RyuApp):
             match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
             self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+        print("[+] Rule " + str(rule) + " with id: " + str(rule_id)
+              + " removed.")
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
     """
@@ -470,8 +490,7 @@ class ACLSwitch(app_manager.RyuApp):
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=eth_dst)
             
-            print "\n[+] New flow detected: checking ACL."
-            print "[?] New flow packet: " + str(pkt)
+            print "[?] New flow: " + str(pkt)
             priority = ofproto_v1_3.OFP_DEFAULT_PRIORITY
 
             # verify if we have a valid buffer_id, if yes avoid to send both

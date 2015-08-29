@@ -111,9 +111,6 @@ class ACLInterfaceRole:
         except:
             print "Switch id should be a positive integer greater than 1."
             return
-        if new_assign[1] != "df" and new_assign[1] != "gw":
-            print "Invalid role provided. \'df\' or \'gw\' expected."
-            return
         assign_req = json.dumps({"switch_id":new_assign[0],
                                  "new_role":new_assign[1]})
         try:
@@ -144,9 +141,6 @@ class ACLInterfaceRole:
                 return
         except:
             print "Switch id should be a positive integer greater than 1."
-            return
-        if removal[1] != "df" and removal[1] != "gw":
-            print "Invalid role provided. \'df\' or \'gw\' expected."
             return
         remove_req = json.dumps({"switch_id":removal[0],
                                  "old_role":removal[1]})

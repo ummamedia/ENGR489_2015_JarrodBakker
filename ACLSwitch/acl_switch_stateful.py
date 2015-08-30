@@ -2,10 +2,14 @@
 # Part of an ENGR489 project at Victoria University of Wellington
 # during 2015.
 #
-# This file manages the flow table and keeps an ACL. When we see
-# a new flow, we check it against the ACL and decide if we allow
-# or drop the packet from there. This stateless firewall will
-# proactively send the rules to the switches.
+# This implementation of ACLSwitch uses packet arrival time to enforce
+# stateful firewall policies. The stateless implementation of ACLSwitch
+# is extended to achieve this. Therefore a rule within the ACL
+# considers source and destination IP addresses, the transport-layer
+# protocol and source and destination ports. Different sets of rules
+# can be distributed to switches uses roles. As a result, rich policies
+# can be deployed on top of a network topology. A rule within the ACL
+# indicates a flow of traffic that should be blocked at the switches.
 #
 # Because rules which block traffic are important to the security
 # of a network, the priority of such rules should be higher than
@@ -36,84 +40,236 @@
 # limitations under the License.
 #####################################################################
 
-# TODO fix function naming convention inconsistencies
-
+# Modules
+# Ryu and OpenFlow protocol
+from ryu.app.ofctl import api
 from ryu.base import app_manager
 from ryu.controller import ofp_event
 from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
-from ryu.lib.packet import packet
-from ryu.lib.packet import ethernet
-# I have added the below libraries to this code
-# Packet stuff
-from ryu.lib.packet import ipv4
-from ryu.lib.packet import ipv6
-from ryu.lib.packet import tcp
-from netaddr import IPAddress
-import socket, struct
-# REST interface
-import json
-from webob import Response
-from ryu.app.wsgi import ControllerBase, WSGIApplication, route
-# Other
-from collections import namedtuple
-from ryu.app.ofctl import api
-import sys
 from ryu.ofproto import ofproto_v1_3_parser as ofp13_parser
 
+# Packets
+from ryu.lib.packet import ethernet
+from ryu.lib.packet import ipv4
+from ryu.lib.packet import ipv6
+from ryu.lib.packet import packet
+from ryu.lib.packet import tcp
+from netaddr import IPAddress
+
+# REST interface
+from ryu.app.wsgi import WSGIApplication
+from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
+
+# Other
+from collections import namedtuple
+from datetime import datetime
+import json
+import sys
+
+# Global field needed for REST linkage
 acl_switch_instance_name = "acl_switch_app"
-url = "/acl_switch"
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role")
+        # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
+    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
-            # Default priority is defined to be in the middle (0x8000 in 1.3)
-            # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst")
-            # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
-    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/rules.json"
+        # Default priority is defined to be in the middle (0x8000 in 1.3)
+        # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
+    ROLE_DEFAULT = "df"
+
     _CONTEXTS = {"wsgi":WSGIApplication}
 
     # Fields
-    access_control_list = {}
+    access_control_list = {} # rule_id:ACL_ENTRY # This is the master list
     acl_id_count = 0
-    connected_switches = []
+    connected_switches = {} # dpip:[roles]
+    role_to_rules = {} # role:[rules]
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
+        
+        # Start empty lists for the dict value
+        self.role_to_rules[self.ROLE_DEFAULT] = []
+
+        # Import config from file
         try:
             self.import_from_file(self.ACL_FILENAME)
         except:
             print "[-] ERROR: could not read from file \'" + str(self.ACL_FILENAME) + "\'\n\t" + str(sys.exc_info())
+        
+        # Create an object for the REST interface
         wsgi = kwargs['wsgi']
-        wsgi.register(ACLSwitchRESTInterface, {acl_switch_instance_name : self})
+        wsgi.register(acl_switch_rest_interface.ACLSwitchRESTInterface, {acl_switch_instance_name : self})
 
-    # Read in ACL rules from file filename. Note that the values passed
-    # through will have 'u' in front of them. This denotes that the string
-    # is Unicode encoded, as such it will affect the intended value.
-    # @param filename - the input file
-    # TODO handle case where file cannot be found
+    """
+    Read in ACL rules from file filename. Note that the values passed
+    through will have 'u' in front of them. This denotes that the string
+    is Unicode encoded, as such it will affect the intended value.
+
+    @param filename - the input file
+    """
     def import_from_file(self, filename):
         buf_in = open(filename)
         for line in buf_in:
-            if line[0] == "#":
-                continue # Skip file comments
-            rule = json.loads(line)
-            self.add_acl_Rule(rule["ip_src"], rule["ip_dst"],
-                              rule["tp_proto"], rule["port_src"],
-                              rule["port_dst"])
-    
-    # Return the size of the ACL.
-    # @return - the size of the ACL
+            if line[0] == "#" or not line.strip():
+                continue # Skip file comments and empty lines
+            try:
+               config = json.loads(line)
+            except:
+                print("[-] Line: " + line + "is not valid JSON.")
+                continue
+            if "rule" in config:
+                self.add_acl_Rule(config["rule"]["ip_src"],
+                                  config["rule"]["ip_dst"],
+                                  config["rule"]["tp_proto"],
+                                  config["rule"]["port_src"],
+                                  config["rule"]["port_dst"],
+                                  config["rule"]["role"])
+            elif "role" in config:
+                self.role_create(config["role"])
+            else:
+                print("[-] Line: " + line + "is not recognised JSON.")
+   
+    """
+    Compile and return information on ACLSwitch. The information is
+    comprised of the number of roles, the number of ACL rules, the
+    number of switches and the current time of the machine that this
+    application is running on. This should only be taken as an
+    approximation of the current time therefore the time should only
+    be accurate within minutes.
+
+    @return - a dictionary containing information on the ACLSwitch.
+    """
+    def get_info(self):
+        num_roles = str(len(self.role_to_rules))
+        num_rules = str(len(self.access_control_list))
+        num_switches = str(len(self.connected_switches))
+        current_time = datetime.now()
+        if int(current_time.minute) > 9:
+            controller_time = (str(current_time.hour) + ":"
+                               + str(current_time.minute))
+        else:
+            controller_time = (str(current_time.hour) + ":0"
+                               + str(current_time.minute))
+        return {"num_roles":num_roles, "num_rules":num_rules,
+                "num_switches":num_switches,
+                "controller_time":controller_time}
+
+    """
+    List the currently available roles.
+
+    @return - a list of the currently available roles.
+    """
+    def role_list(self):
+        return self.role_to_rules.keys()
+
+    """
+    Create a role which can then be assigned to a switch.
+
+    @param new_role - the role to create.
+    @return - result of the operation along with a message.
+    """
+    def role_create(self, new_role):
+        if new_role in self.role_to_rules:
+            return (False, "Role " + new_role + " already exists.")
+        self.role_to_rules[new_role] = []
+        print("[+] New role added: " + new_role)
+        return (True, "Role " + new_role + " created.")
+
+    """
+    Delete a role. This can only be done once there are no rules
+    associated with the role.
+
+    @param role - the role to delete.
+    @return - result of the operation along with a message.
+    """
+    def role_delete(self, role):
+        if role == self.ROLE_DEFAULT:
+            return (False, "Role df cannot be deleted.")
+        if role not in self.role_to_rules:
+            return (False, "Role " + role + " does not exist.")
+        if self.role_to_rules[role]:
+            return (False, "Cannot delete role " + role +
+                    ", rules are still assoicated with it.")
+        for switch in self.connected_switches:
+            if role in self.connected_switches[switch]:
+                return (False, "Cannot delete role " + role +
+                        ", switches still have it assigned.")
+        del self.role_to_rules[role]
+        print("[+] Role deleted: " + role)
+        return (True, "Role " + role + " deleted.")
+
+    """
+    Assign a role to a switch then give it the appropriate rules.
+
+    @param switch_id - the datapath_id of a switch, switch_id is used
+                       for consistency with the API.
+    @param role - the new role to assign to a switch.
+    @return - result of the operation along with a message.
+    """
+    def switch_role_assign(self, switch_id, new_role):
+        if new_role not in self.role_to_rules:
+            return (False, "Role " + new_role + " does not exist.")
+        if switch_id not in self.connected_switches:
+            return (False, "Switch " + str(switch_id) + " does not exist.")
+        if new_role in self.connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " already has role "
+                    + str(new_role) + ".")
+        self.connected_switches[switch_id].append(new_role)
+        datapath = api.get_datapath(self, switch_id)
+        self.distribute_rules_role_set(datapath, new_role)
+        print("[+] Switch " + str(switch_id) + " assigned role: " + new_role)
+        return (True, "Switch " + str(switch_id) + " given role "
+                + new_role + ".")
+
+    """
+    Remove a role assignment from a switch then remove the respective
+    rules from the switch. Assumes that once the role has been removed
+    the respective rules will be successfully removed from the switches.
+
+    @param switch_id - the datapath_id of a switch, switch_id is used
+                       for consistency with the API.
+    @param old_role - the role to remove from a switch.
+    @return - result of the operation along with a message.
+    """
+    def switch_role_remove(self, switch_id, old_role):
+        if old_role not in self.role_to_rules:
+            return (False, "Role " + old_role + " does not exist.")
+        if switch_id not in self.connected_switches:
+            return (False, "Switch " + str(switch_id) + " does not exist.")
+        if old_role not in self.connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " does not have role "
+                    + str(old_role) + ".")
+        self.connected_switches[switch_id].remove(old_role)
+        datapath = api.get_datapath(self, switch_id)
+        for rule_id in self.role_to_rules[old_role]:
+            rule = self.access_control_list[rule_id]
+            match = self.create_match(rule)
+            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+        print("[+] Switch " + str(switch_id) + " removed role: " + old_role)
+        return (True, "Switch " + str(switch_id) + " had role "
+                + old_role + " removed.")
+
+    """
+    Return the size of the ACL.
+
+    @return - the size of the ACL
+    """
     def acl_size(self):
         return len(self.access_control_list)
 
-    # Create an OFPMatch instance based on the contents of an ACL_ENTRY.
-    # @param rule - the entry to create an OFPMatch instance from
-    # @return - the OFPMatch instance
+    """
+    Create an OFPMatch instance based on the contents of an ACL_ENTRY.
+
+    @param rule - the entry to create an OFPMatch instance from
+    @return - the OFPMatch instance
+    """
     def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
         # Match IP layer (layer 3)
@@ -163,68 +319,110 @@ class ACLSwitch(app_manager.RyuApp):
                                        int(rule.port_dst))
         return match
 
-    # Add a rule to the ACL by creating an entry then appending it to the list. 
-    # @param ip_src - the source IP address to match
-    # @param ip_dst - the destination IP address to match
-    # @param tp_proto - the Transport Layer (layer 4) protocol to match
-    # @param port_src - the Transport Layer source port to match
-    # @param port_dst - the Transport Layer destination port to match
-    # @return - a tuple indicating if the operation was a success, a message
-    #           to be returned to the client and the new created rule. This
-    #           is useful in the case where a single rule has been created
-    #           and needs to be distributed among switches.
-    def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst):
+    """
+    Compare the 5-tuple entries of two ACL rules. That is compare the
+    IP addresses, transport-layer protocol and port numbers.
+    """
+    def compare_acl_rules(self, rule_1, rule_2):
+        return ((IPAddress(rule_1.ip_src)==IPAddress(rule_2.ip_src)) and
+                (IPAddress(rule_1.ip_dst)==IPAddress(rule_2.ip_dst)) and
+                (rule_1.tp_proto==rule_2.tp_proto) and
+                (rule_1.port_src==rule_2.port_src) and
+                (rule_1.port_dst==rule_2.port_dst))
+
+    """
+    Add a rule to the ACL by creating an entry then appending it to the list. 
+    
+    @param ip_src - the source IP address to match
+    @param ip_dst - the destination IP address to match
+    @param tp_proto - the Transport Layer (layer 4) protocol to match
+    @param port_src - the Transport Layer source port to match
+    @param port_dst - the Transport Layer destination port to match
+    @return - a tuple indicating if the operation was a success, a message
+              to be returned to the client and the new created rule. This
+              is useful in the case where a single rule has been created
+              and needs to be distributed among switches.
+    """
+    def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
+        if role not in self.role_to_rules:
+            return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
-        newRule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
+        new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst)
-        self.access_control_list[rule_id] = newRule
-        return (True, "Rule was created with id: " + rule_id + ".", newRule)
+                                 port_dst=port_dst, role=role)
+        for rule in self.access_control_list.values():
+            if self.compare_acl_rules(new_rule, rule):
+                return (False, "New rule was not created, it already "
+                        "exists.", None)
+        self.access_control_list[rule_id] = new_rule
+        self.role_to_rules[role].append(rule_id)
+        print("[+] Rule " + str(new_rule) + " created with id: "
+              + str(rule_id))
+        return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
    
-    # Remove a rule from the ACL then remove the associated flow table
-    # entries from the appropriate switches.
-    # @param rule_id - id of the rule to be removed.
-    # @return - a tuple indicating if the operation was a success and a
-    #           message to be returned to the client.
+    """
+    Remove a rule from the ACL then remove the associated flow table
+    entries from the appropriate switches.
+    
+    @param rule_id - id of the rule to be removed.
+    @return - a tuple indicating if the operation was a success and a
+              message to be returned to the client.
+    """
     def delete_acl_rule(self, rule_id):
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
-        match = self.create_match(rule)
+        self.role_to_rules[rule.role].remove(rule_id)
         for switch in self.connected_switches:
+            if rule.role not in self.connected_switches[switch]:
+                continue
+            match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
-            self.delete_flow(datapath, match)
+            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+        print("[+] Rule " + str(rule) + " with id: " + str(rule_id)
+              + " removed.")
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
-    # Proactively distribute a newly added rule to all connected switches.
-    # It would seem intelligent to create the OFPMatch first then loop
-    # HOWEVER you cannot assume that switches will be running the same
-    # version of OpenFlow.
-    # @param rule - the ACL rule to distributed among the switches.
+    """
+    Proactively distribute a newly added rule to all connected switches.
+    It is necessary to check the a switch is not given a rule for which
+    it is not allowed to have. This is done by comparing roles.
+    
+    @param rule - the ACL rule to distributed among the switches.
+    """
     def distribute_single_rule(self, rule):
         for switch in self.connected_switches:
+            switch_roles = self.connected_switches[switch]
+            if rule.role not in switch_roles:
+                continue
             datapath = api.get_datapath(self, switch)
             priority = self.OFP_MAX_PRIORITY
             actions = []
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
 
-    # Proactively distribute hardcoded firewall rules to the switches.
-    # This function is called on application start-up to distribute rules
-    # read in from a file.
-    # @param datapath - an OF enabled switch to communicate with
-    # @param parser - parser for the switch passed through in datapath
-    def distribute_rules_switch_startup(self, datapath):
-        for rule_id in self.access_control_list:
+    """
+    Proactively distribute hardcoded firewall rules to the switch
+    specified using the datapath. Distribute the rules associated
+    with the role provided.
+    
+    @param datapath - an OF enabled switch to communicate with
+    @param role - the role of the switch
+    """
+    def distribute_rules_role_set(self, datapath, role):
+        for rule_id in self.role_to_rules[role]:
             rule = self.access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
 
+    """
+    Event handler used when a switch connects to the controller.
+    """
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
@@ -242,25 +440,34 @@ class ACLSwitch(app_manager.RyuApp):
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
         self.add_flow(datapath, 0, match, actions)
+
         # The code below has been added by Jarrod N. Bakker
         # Take note of switches (via their datapaths)
-        self.connected_switches.append(ev.msg.datapath_id)
+        self.connected_switches[ev.msg.datapath_id] = [self.ROLE_DEFAULT]
         # Distribute the list of rules to the switch
-        self.distribute_rules_switch_startup(datapath)
+        self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
 
-    # Delete a flow table entry from a switch. OFPFC_DELETE for flow removal
-    # over OFPFC_DELETE_STRICT. The later matches the flow, wildcards and
-    # priority which is not needed in this case.
-    # @param datapath - the switch to remove the flow table entry from.
-    # @param entry - the flow table entry to remove.
-    def delete_flow(self, datapath, match):
+    """
+    Delete a flow table entry from a switch. OFPFC_DELETE_STRICT is used
+    as you only want to remove exact matches of the rule. 
+    
+    @param datapath - the switch to remove the flow table entry from.
+    @param priority - priority of the rule to remove.
+    @param match - the flow table entry to remove.
+    """
+    def delete_flow(self, datapath, priority, match):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-        command = ofproto.OFPFC_DELETE
+        command = ofproto.OFPFC_DELETE_STRICT
         mod = parser.OFPFlowMod(datapath=datapath, command=command,
-                                match=match, out_port=ofproto.OFPP_ANY, out_group=ofproto.OFPG_ANY)
+                                priority=priority, match=match,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY)
         datapath.send_msg(mod)
 
+    """
+    Reactively add a flow table entry to a switch's flow table.
+    """
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -276,6 +483,10 @@ class ACLSwitch(app_manager.RyuApp):
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
 
+    """
+    Event handler used when a switch receives a packet that it cannot
+    match a flow table entry with.
+    """
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def _packet_in_handler(self, ev):
         # If you hit this you might want to increase
@@ -314,8 +525,7 @@ class ACLSwitch(app_manager.RyuApp):
         if out_port != ofproto.OFPP_FLOOD:
             match = parser.OFPMatch(in_port=in_port, eth_dst=eth_dst)
             
-            print "\n[+] New flow detected: checking ACL."
-            print "[?] New flow packet: " + str(pkt)
+            print "[?] New flow: " + str(pkt)
             priority = ofproto_v1_3.OFP_DEFAULT_PRIORITY
 
             # verify if we have a valid buffer_id, if yes avoid to send both
@@ -333,89 +543,4 @@ class ACLSwitch(app_manager.RyuApp):
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                   in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
-
-# This class manages the RESTful API calls to add rules etc.
-class ACLSwitchRESTInterface(ControllerBase):
-
-    def __init__(self, req, link, data, **config):
-        super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
-        self.acl_switch_inst = data[acl_switch_instance_name]
-   
-    # API call to return the size of the ACl.
-    @route("acl_switch", url+"/acl", methods=["GET"])
-    def return_acl_size(self, req, **kwargs):
-        aclSize = {"acl_size":str(self.acl_switch_inst.acl_size())}
-        body = json.dumps(aclSize)
-        return Response(content_type="application/json", body=body)
-
-    # API call to return the current contents of the ACL.
-    @route("acl_switch", url, methods=["GET"])
-    def return_acl(self, req, **kwargs):
-        acl = self.format_acl()
-        body = json.dumps(acl)
-        return Response(content_type="application/json", body=body)
-
-    # API call to add a rule to the ACL.
-    @route("acl_switch", url, methods=["PUT"])
-    def add_rule(self, req, **kwargs):
-        try:
-            ruleReq = json.loads(req.body)
-        except:
-            return Response(status=400, body="Unable to parse JSON.")
-        if not self.check_rule_json(ruleReq):
-            return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.add_acl_Rule(ruleReq["ip_src"],
-                                                    ruleReq["ip_dst"],
-                                                    ruleReq["tp_proto"],
-                                                    ruleReq["port_src"],
-                                                    ruleReq["port_dst"])
-        self.acl_switch_inst.distribute_single_rule(result[2])
-        return Response(status=200, body=result[1])
-
-    # API call to remove a rule from the ACL.
-    @route("acl_switch", url, methods=["DELETE"])
-    def delete_rule(self, req, **kwargs):
-        try:
-            deleteReq = json.loads(req.body)
-        except:
-            return Response(status=400, body="Unable to parse JSON.")
-        result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
-        # rule doesn't exist send back HTTP 400
-        if result[0] == True:
-            status = 200
-        else:
-            status = 400
-        return Response(status=status, body=result[1])
-
-    # Turn the ACL into a dictionary for that it can be easily converted
-    # into JSON.
-    # @return - the acl formated in JSON.
-    def format_acl(self):
-        acl_formatted = []
-        for rule_id in self.acl_switch_inst.access_control_list:
-            rule = self.acl_switch_inst.access_control_list[rule_id]
-            # Order the list as it's created by using rule_id
-            acl_formatted.insert(int(rule_id), {"rule_id":rule_id, "ip_src":rule.ip_src,
-                                  "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
-                                  "port_src": rule.port_src, "port_dst":rule.port_dst})
-        return acl_formatted
-
-    # Check that incoming JSON for an ACL has the required 5 fields:
-    # "ip_src", "ip_dst", "tp_proto", "port_src" and "port_dst".
-    # @param ruleJSON - input from the client to check.
-    # @return - True if ruleJSON is valid, False otherwise.
-    def check_rule_json(self, ruleJSON):
-        if len(ruleJSON) != 5:
-            return False
-        if not "ip_src" in ruleJSON:
-            return False
-        if not "ip_dst" in ruleJSON:
-            return False
-        if not "tp_proto" in ruleJSON:
-            return False
-        if not "port_src" in ruleJSON:
-            return False
-        if not "port_dst" in ruleJSON:
-            return False
-        return True # everything is looking good!
 

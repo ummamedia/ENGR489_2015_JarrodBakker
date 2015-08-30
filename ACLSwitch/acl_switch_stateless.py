@@ -56,7 +56,7 @@ from netaddr import IPAddress
 
 # REST interface
 from ryu.app.wsgi import WSGIApplication
-from ryu.ENGR489_2015_JarrodBakker import acl_switch_rest_interface
+from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
 
 # Other
 from collections import namedtuple
@@ -70,7 +70,7 @@ class ACLSwitch(app_manager.RyuApp):
     # Constants
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role")
         # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
-    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/config.json"
+    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
         # Default priority is defined to be in the middle (0x8000 in 1.3)

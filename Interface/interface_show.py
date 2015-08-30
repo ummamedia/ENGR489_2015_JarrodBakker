@@ -24,7 +24,8 @@ class ACLInterfaceShow:
     PROMPT_SHOW = "ACL Switch (show) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_SHOW = "\trole, rule OR switch"
+    TEXT_HELP_SHOW = "\tinfo, role, rule OR switch"
+    URL_ACLSWITCH_INFO = "http://127.0.0.1:8080/acl_switch" # using loopback
     URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
     URL_ACLSWITCH_RULE = "http://127.0.0.1:8080/acl_switch/acl_rules" # using loopback
     URL_ACLSWITCH_SWITCH = "http://127.0.0.1:8080/acl_switch/switches" # using loopback
@@ -43,6 +44,8 @@ class ACLInterfaceShow:
             self.get_role()
         elif buf_in == "switch":
             self.get_switch()
+        elif buf_in == "info":
+            self.get_info()
         else:
             print(self.TEXT_ERROR_SYNTAX + "\n" + self.TEXT_HELP_SHOW) # syntax error
 
@@ -69,6 +72,30 @@ class ACLInterfaceShow:
             table.add_row([rule["rule_id"], rule["ip_src"], rule["ip_dst"],
                            rule["tp_proto"], rule["port_src"], rule["port_dst"],
                            rule["role"]])
+        print table
+
+    """
+    Fetch information from ACLSwitch on the number of roles, the number
+    of rules, the number of switches and the current time (approximate)
+    of the machine ACLSwitch is running on.
+    """
+    def get_info(self):
+        print("Fetching ACLSwitch information...")
+        try:
+            resp = requests.get(self.URL_ACLSWITCH_INFO)
+        except:
+            print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error fetching resource, HTTP " + str(resp.status_code)
+                  + " returned.")
+            return
+        info = resp.json()
+        table = PrettyTable(["Number of Roles","Number of Rules",
+                             "Number of Switches",
+                             "Current ACLSwitch time (approx.)"])
+        table.add_row([info["num_roles"], info["num_rules"],
+                       info["num_switches"], info["controller_time"]])
         print table
 
     """

@@ -60,6 +60,7 @@ from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
 
 # Other
 from collections import namedtuple
+from datetime import datetime
 import json
 import sys
 
@@ -130,7 +131,32 @@ class ACLSwitch(app_manager.RyuApp):
                 self.role_create(config["role"])
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
-    
+   
+    """
+    Compile and return information on ACLSwitch. The information is
+    comprised of the number of roles, the number of ACL rules, the
+    number of switches and the current time of the machine that this
+    application is running on. This should only be taken as an
+    approximation of the current time therefore the time should only
+    be accurate within minutes.
+
+    @return - a dictionary containing information on the ACLSwitch.
+    """
+    def get_info(self):
+        num_roles = str(len(self.role_to_rules))
+        num_rules = str(len(self.access_control_list))
+        num_switches = str(len(self.connected_switches))
+        current_time = datetime.now()
+        if int(current_time.minute) > 9:
+            controller_time = (str(current_time.hour) + ":"
+                               + str(current_time.minute))
+        else:
+            controller_time = (str(current_time.hour) + ":0"
+                               + str(current_time.minute))
+        return {"num_roles":num_roles, "num_rules":num_rules,
+                "num_switches":num_switches,
+                "controller_time":controller_time}
+
     """
     List the currently available roles.
 

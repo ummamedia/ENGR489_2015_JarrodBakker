@@ -25,6 +25,20 @@ class ACLSwitchRESTInterface(ControllerBase):
         self.acl_switch_inst = data[acl_switch_instance_name]
    
     """
+    API call to return info on ACLSwitch. The number of roles, rules,
+    switches and the current time of the machine that ACLSwitch is
+    running on are returned. This should only be taken as an
+    approximation of the current time therefore the time should only
+    be accurate within minutes.
+
+    """
+    @route("acl_switch", url, methods=["GET"])
+    def return_aclswitch_info(self, req, **kwargs):
+        aclswitch_info = self.acl_switch_inst.get_info()
+        body = json.dumps(aclswitch_info)
+        return Response(content_type="application/json", body=body)
+
+    """
     API call to show the switches and the roles associated with them.
     """
     @route("acl_switch", url+"/switches", methods=["GET"])
@@ -123,16 +137,7 @@ class ACLSwitchRESTInterface(ControllerBase):
         else:
             status = 400
         return Response(status=status, body=result[1])
-
-    """
-    API call to return the size of the ACl.
-    """
-    @route("acl_switch", url+"/acl", methods=["GET"])
-    def return_acl_size(self, req, **kwargs):
-        aclSize = {"acl_size":str(self.acl_switch_inst.acl_size())}
-        body = json.dumps(aclSize)
-        return Response(content_type="application/json", body=body)
-
+    
     """
     API call to return the current contents of the ACL.
     """

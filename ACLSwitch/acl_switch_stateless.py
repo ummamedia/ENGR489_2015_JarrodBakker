@@ -2,10 +2,13 @@
 # Part of an ENGR489 project at Victoria University of Wellington
 # during 2015.
 #
-# This file manages the flow table and keeps an ACL. When we see
-# a new flow, we check it against the ACL and decide if we allow
-# or drop the packet from there. This stateless firewall will
-# proactively send the rules to the switches.
+# This implementation of ACLSwitch enforces stateless firewall policies
+# by looking at the source and destination IP addresses,
+# the transport-layer protocol and source and destination ports.
+# Different sets of rules can be distributed to switches uses roles. As
+# a result, rich policies can be deployed on top of a network topology.
+# A rule within the ACL indicates a flow of traffic that should be
+# blocked at the switches.
 #
 # Because rules which block traffic are important to the security
 # of a network, the priority of such rules should be higher than

@@ -391,6 +391,8 @@ class ACLSwitch(app_manager.RyuApp):
     It is necessary to check the a switch is not given a rule for which
     it is not allowed to have. This is done by comparing roles.
     
+    Called when a rule has been created.
+    
     @param rule - the ACL rule to distributed among the switches.
     """
     def distribute_single_rule(self, rule):
@@ -408,6 +410,8 @@ class ACLSwitch(app_manager.RyuApp):
     Proactively distribute hardcoded firewall rules to the switch
     specified using the datapath. Distribute the rules associated
     with the role provided.
+    
+    Called when a switch is assigned a role.
     
     @param datapath - an OF enabled switch to communicate with
     @param role - the role of the switch

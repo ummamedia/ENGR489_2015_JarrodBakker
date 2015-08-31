@@ -66,6 +66,7 @@ from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
 from collections import namedtuple
 from datetime import datetime
 import json
+import signal
 import sys
 
 # Global field needed for REST linkage
@@ -161,6 +162,8 @@ class ACLSwitch(app_manager.RyuApp):
                 "num_switches":num_switches,
                 "controller_time":controller_time}
 
+    # Functions handling the management of switch roles
+
     """
     List the currently available roles.
 
@@ -255,6 +258,8 @@ class ACLSwitch(app_manager.RyuApp):
         print("[+] Switch " + str(switch_id) + " removed role: " + old_role)
         return (True, "Switch " + str(switch_id) + " had role "
                 + old_role + " removed.")
+
+    # Functions handling the use of the ACL
 
     """
     Return the size of the ACL.
@@ -386,6 +391,8 @@ class ACLSwitch(app_manager.RyuApp):
               + " removed.")
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
+    # Functions handling ACL rule distribution
+
     """
     Proactively distribute a newly added rule to all connected switches.
     It is necessary to check the a switch is not given a rule for which
@@ -424,6 +431,59 @@ class ACLSwitch(app_manager.RyuApp):
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
 
+    # Functions handling OpenFlow flow table entries
+    
+    """
+    Delete a flow table entry from a switch. OFPFC_DELETE_STRICT is used
+    as you only want to remove exact matches of the rule. 
+    
+    @param datapath - the switch to remove the flow table entry from.
+    @param priority - priority of the rule to remove.
+    @param match - the flow table entry to remove.
+    """
+    def delete_flow(self, datapath, priority, match):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+        command = ofproto.OFPFC_DELETE_STRICT
+        mod = parser.OFPFlowMod(datapath=datapath, command=command,
+                                priority=priority, match=match,
+                                out_port=ofproto.OFPP_ANY,
+                                out_group=ofproto.OFPG_ANY)
+        datapath.send_msg(mod)
+
+    """
+    Reactively add a flow table entry to a switch's flow table.
+
+    @param datapath - the switch to add the flow table entry to.
+    @param time_limit - when the rule should expire.
+    @param priority - priority of the rule to add.
+    @param match - the flow table entry to add.
+    @param actions - action for a switch to perform.
+    @param buffer_id - identifier of buffer queue if traffic is being
+                       buffered.
+    """
+    def add_flow(self, datapath, priority, match, actions, buffer_id=None, time_limit=0):
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+                                             actions)]
+        if buffer_id:
+            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
+                                    hard_timeout=time_limit,
+                                    priority=priority, match=match,
+                                    flags=ofproto.OFPFF_SEND_FLOW_REM,
+                                    instructions=inst)
+        else:
+            mod = parser.OFPFlowMod(datapath=datapath,
+                                    hard_timeout=time_limit,
+                                    priority=priority, match=match,
+                                    flags=ofproto.OFPFF_SEND_FLOW_REM,
+                                    instructions=inst)
+        datapath.send_msg(mod)
+
+    # Functions handling OpenFlow events
+    
     """
     Event handler used when a switch connects to the controller.
     """
@@ -447,45 +507,23 @@ class ACLSwitch(app_manager.RyuApp):
 
         # The code below has been added by Jarrod N. Bakker
         # Take note of switches (via their datapaths)
-        self.connected_switches[ev.msg.datapath_id] = [self.ROLE_DEFAULT]
+        dp_id = ev.msg.datapath_id
+        self.connected_switches[dp_id] = [self.ROLE_DEFAULT]
+
+        print("[?] Switch " + str(dp_id) + " connected.")
+
         # Distribute the list of rules to the switch
         self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
 
     """
-    Delete a flow table entry from a switch. OFPFC_DELETE_STRICT is used
-    as you only want to remove exact matches of the rule. 
-    
-    @param datapath - the switch to remove the flow table entry from.
-    @param priority - priority of the rule to remove.
-    @param match - the flow table entry to remove.
+    Event handler used when a flow table entry is deleted.
     """
-    def delete_flow(self, datapath, priority, match):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-        command = ofproto.OFPFC_DELETE_STRICT
-        mod = parser.OFPFlowMod(datapath=datapath, command=command,
-                                priority=priority, match=match,
-                                out_port=ofproto.OFPP_ANY,
-                                out_group=ofproto.OFPG_ANY)
-        datapath.send_msg(mod)
-
-    """
-    Reactively add a flow table entry to a switch's flow table.
-    """
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None):
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
-                                             actions)]
-        if buffer_id:
-            mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
-                                    priority=priority, match=match,
-                                    instructions=inst)
-        else:
-            mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
-                                    match=match, instructions=inst)
-        datapath.send_msg(mod)
+    @set_ev_cls(ofp_event.EventOFPFlowRemoved)
+    def rule_deletion_handler(self, ev):
+        msg = ev.msg
+        match = msg.match
+        print("[?] Flow table entry removed.\n\t Flow match: "
+              + str(match))
 
     """
     Event handler used when a switch receives a packet that it cannot

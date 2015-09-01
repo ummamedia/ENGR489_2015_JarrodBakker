@@ -102,7 +102,9 @@ class ACLSwitch(app_manager.RyuApp):
         try:
             self.import_from_file(self.ACL_FILENAME)
         except:
-            print "[-] ERROR: could not read from file \'" + str(self.ACL_FILENAME) + "\'\n\t" + str(sys.exc_info())
+            print("[-] ERROR: could not read from file \'"
+                  + str(self.ACL_FILENAME) + "\'\n\t"
+                  + str(sys.exc_info()))
         
         # Create an object for the REST interface
         wsgi = kwargs['wsgi']
@@ -117,6 +119,7 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def import_from_file(self, filename):
         buf_in = open(filename)
+        print("[?] Reading from file \'" + str(filename) + "\'")
         for line in buf_in:
             if line[0] == "#" or not line.strip():
                 continue # Skip file comments and empty lines
@@ -270,6 +273,20 @@ class ACLSwitch(app_manager.RyuApp):
         return len(self.access_control_list)
 
     """
+    Return the IP version being used given the source and destination
+    addresses. 
+
+    @param ip_src - the source IP address to check. 
+    @param ip_dst - the destination IP address to check.
+    @return - the IP version being used.
+    """
+    def return_ip_version(self, ip_src, ip_dst):
+        if "*" not in ip_src:
+            return IPAddress(ip_src).version
+        else:
+            return IPAddress(ip_dst).version
+
+    """
     Create an OFPMatch instance based on the contents of an ACL_ENTRY.
 
     @param rule - the entry to create an OFPMatch instance from
@@ -277,60 +294,71 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def create_match(self, rule):
         match = ofp13_parser.OFPMatch()
+        ip_version = self.return_ip_version(rule.ip_src, rule.ip_dst)
         # Match IP layer (layer 3)
-        if (IPAddress(rule.ip_src).version == 4):
+        if ip_version == 4:
             # Match IPv4
             match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                                ethernet.ether.ETH_TYPE_IP)
-            if (rule.ip_src != "*"):
+            if rule.ip_src != "*":
                 match.append_field(ofproto_v1_3.OXM_OF_IPV4_SRC,
                                     int(IPAddress(rule.ip_src)))
-            if (rule.ip_dst != "*"):
+            if rule.ip_dst != "*":
                 match.append_field(ofproto_v1_3.OXM_OF_IPV4_DST,
                                    int(IPAddress(rule.ip_dst)))
         else:
             # Match IPv6
             match.append_field(ofproto_v1_3.OXM_OF_ETH_TYPE,
                                ethernet.ether.ETH_TYPE_IPV6)
-            if (rule.ip_src != "*"):
-                print"\n\n" + hex(IPAddress(rule.ip_src)) + "\n\n"
+            if rule.ip_src != "*":
                 match.append_field(ofproto_v1_3.OXM_OF_IPV6_SRC,
                                    IPAddress(rule.ip_src).words)
-            if (rule.ip_dst != "*"):
+            if rule.ip_dst != "*":
                 match.append_field(ofproto_v1_3.OXM_OF_IPV6_DST,
                                    IPAddress(rule.ip_dst).words)
+
         # Match transport layer (layer 4) 
-        # Add IPv6 support - next header field must be used.
-        if (rule.tp_proto != "*"):
-            if (rule.tp_proto == "tcp"):
+        if rule.tp_proto != "*":
+            if rule.tp_proto == "tcp":
                 # Match TCP
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
-                                   ipv4.inet.IPPROTO_TCP)
-                if (rule.port_src != "*"):
+                                   ipv4.inet.IPPROTO_TCP) # covers IPv6
+                if rule.port_src != "*":
                     match.append_field(ofproto_v1_3.OXM_OF_TCP_SRC,
                                        int(rule.port_src))
-                if (rule.port_src != "*"):
+                if rule.port_dst != "*":
                     match.append_field(ofproto_v1_3.OXM_OF_TCP_DST,
                                        int(rule.port_dst))
-            elif (rule.tp_proto == "udp"):
+            elif rule.tp_proto == "udp":
                 # Match UDP
                 match.append_field(ofproto_v1_3.OXM_OF_IP_PROTO,
-                                   ipv4.inet.IPPROTO_UDP)
-                if (rule.port_src != "*"):
+                                   ipv4.inet.IPPROTO_UDP) # covers IPv6
+                if rule.port_src != "*":
                     match.append_field(ofproto_v1_3.OXM_OF_UDP_SRC,
                                        int(rule.port_src))
-                if (rule.port_src != "*"):
+                if rule.port_dst != "*":
                     match.append_field(ofproto_v1_3.OXM_OF_UDP_DST,
                                        int(rule.port_dst))
         return match
+
+    """
+    Returns a string representation of an IP address.
+
+    @param ip_addr - the IP address to turn into a string.
+    @return - the string representation of an IP address.
+    """
+    def ip_to_string(self, ip_addr):
+        if ip_addr == "*":
+            return ip_addr
+        return str(IPAddress(ip_addr))
 
     """
     Compare the 5-tuple entries of two ACL rules. That is compare the
     IP addresses, transport-layer protocol and port numbers.
     """
     def compare_acl_rules(self, rule_1, rule_2):
-        return ((IPAddress(rule_1.ip_src)==IPAddress(rule_2.ip_src)) and
-                (IPAddress(rule_1.ip_dst)==IPAddress(rule_2.ip_dst)) and
+        return ((self.ip_to_string(rule_1.ip_src)==self.ip_to_string(rule_2.ip_src)) and
+                (self.ip_to_string(rule_1.ip_dst)==self.ip_to_string(rule_2.ip_dst)) and
                 (rule_1.tp_proto==rule_2.tp_proto) and
                 (rule_1.port_src==rule_2.port_src) and
                 (rule_1.port_dst==rule_2.port_dst))

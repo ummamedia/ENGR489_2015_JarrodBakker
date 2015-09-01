@@ -66,6 +66,10 @@ Check that the source and destination IP addresses are of the same versions.
 @return - True if valid, False if not valid.
 """
 def check_ip_versions(ip_src, ip_dst):
+    if ip_src == "*" and ip_dst == "*":
+        return False
+    if ip_src == "*" or ip_dst == "*":
+        return True
     return IPAddress(ip_src).version == IPAddress(ip_dst).version
 
 """

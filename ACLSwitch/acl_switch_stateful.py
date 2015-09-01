@@ -74,7 +74,7 @@ acl_switch_instance_name = "acl_switch_app"
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role")
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role time_start time_duration")
         # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
     ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
@@ -90,6 +90,7 @@ class ACLSwitch(app_manager.RyuApp):
     acl_id_count = 0
     connected_switches = {} # dpip:[roles]
     role_to_rules = {} # role:[rules]
+    rule_time_queue = []
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
@@ -129,14 +130,19 @@ class ACLSwitch(app_manager.RyuApp):
                 print("[-] Line: " + line + "is not valid JSON.")
                 continue
             if "rule" in config:
-                self.add_acl_Rule(config["rule"]["ip_src"],
-                                  config["rule"]["ip_dst"],
-                                  config["rule"]["tp_proto"],
-                                  config["rule"]["port_src"],
-                                  config["rule"]["port_dst"],
-                                  config["rule"]["role"])
+                rule = config["rule"]
+                self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
+                                  rule["tp_proto"], rule["port_src"],
+                                  rule["port_dst"], rule["role"])
             elif "role" in config:
                 self.role_create(config["role"])
+            elif "rule_time" in config:
+                rule = config["rule_time"]
+                self.add_acl_rule_time(rule["ip_src"], rule["ip_dst"],
+                                       rule["tp_proto"], rule["port_src"],
+                                       rule["port_dst"], rule["role"],
+                                       rule["time_start"],
+                                       rule["time_duration"])
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
    
@@ -355,8 +361,14 @@ class ACLSwitch(app_manager.RyuApp):
     """
     Compare the 5-tuple entries of two ACL rules. That is compare the
     IP addresses, transport-layer protocol and port numbers.
+
+    @param rule_1 - a rule to be compared.
+    @param rule_2 - a rule to be compared.
+    @return - True is equal, False otherwise.
     """
     def compare_acl_rules(self, rule_1, rule_2):
+        # TODO Compare the times, allow a rule to be added multiple times
+        #      if times are different.
         return ((self.ip_to_string(rule_1.ip_src)==self.ip_to_string(rule_2.ip_src)) and
                 (self.ip_to_string(rule_1.ip_dst)==self.ip_to_string(rule_2.ip_dst)) and
                 (rule_1.tp_proto==rule_2.tp_proto) and
@@ -364,26 +376,30 @@ class ACLSwitch(app_manager.RyuApp):
                 (rule_1.port_dst==rule_2.port_dst))
 
     """
-    Add a rule to the ACL by creating an entry then appending it to the list. 
+    Add a rule to the ACL by creating an entry then appending it to the
+    list. 
     
-    @param ip_src - the source IP address to match
-    @param ip_dst - the destination IP address to match
-    @param tp_proto - the Transport Layer (layer 4) protocol to match
-    @param port_src - the Transport Layer source port to match
-    @param port_dst - the Transport Layer destination port to match
+    @param ip_src - the source IP address to match.
+    @param ip_dst - the destination IP address to match.
+    @param tp_proto - the Transport Layer (layer 4) protocol to match.
+    @param port_src - the Transport Layer source port to match.
+    @param port_dst - the Transport Layer destination port to match.
+    @param role - the role the rule should be associated with.
     @return - a tuple indicating if the operation was a success, a message
               to be returned to the client and the new created rule. This
               is useful in the case where a single rule has been created
               and needs to be distributed among switches.
     """
-    def add_acl_Rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
+    def add_acl_rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
+                     role):
         if role not in self.role_to_rules:
             return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
         self.acl_id_count += 1 # need to update to keep ids unique
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst, role=role)
+                                 port_dst=port_dst, role=role,
+                                 time_start="N\A", time_duration="N\A")
         for rule in self.access_control_list.values():
             if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
@@ -395,6 +411,46 @@ class ACLSwitch(app_manager.RyuApp):
         return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
    
     """
+    Add a rule to the ACL by creating an entry then appending it to the
+    list. If the rule needs to be enforced at specific times then it is
+    noted in rule_time_queue.
+    
+    @param ip_src - the source IP address to match.
+    @param ip_dst - the destination IP address to match.
+    @param tp_proto - the Transport Layer (layer 4) protocol to match.
+    @param port_src - the Transport Layer source port to match.
+    @param port_dst - the Transport Layer destination port to match.
+    @param role - the role the rule should be associated with.
+    @param time_start - when the rule should start being enforced.
+    @param time_duration - how long the rule should be enforced for.
+    @return - a tuple indicating if the operation was a success, a message
+              to be returned to the client and the new created rule. This
+              is useful in the case where a single rule has been created
+              and needs to be distributed among switches.
+    """
+    def add_acl_rule_time(self, ip_src, ip_dst, tp_proto, port_src,
+                          port_dst, role, time_start, time_duration):
+        if role not in self.role_to_rules:
+            return (False, "Role " + role + " was not recognised.", None)
+        rule_id = str(self.acl_id_count)
+        self.acl_id_count += 1 # need to update to keep ids unique
+        new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
+                                 tp_proto=tp_proto, port_src=port_src,
+                                 port_dst=port_dst, role=role,
+                                 time_start=time_start,
+                                 time_duration=time_duration)
+        for rule in self.access_control_list.values():
+            if self.compare_acl_rules(new_rule, rule):
+                return (False, "New rule was not created, it already "
+                        "exists.", None)
+        self.access_control_list[rule_id] = new_rule
+        self.role_to_rules[role].append(rule_id)
+        print("[+] Rule " + str(new_rule) + " created with id: "
+              + str(rule_id) + ". To be enforced from " + str(time_start)
+              + " for " + str(time_duration) + " minutes.")
+        return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
+
+    """
     Remove a rule from the ACL then remove the associated flow table
     entries from the appropriate switches.
     
@@ -403,6 +459,8 @@ class ACLSwitch(app_manager.RyuApp):
               message to be returned to the client.
     """
     def delete_acl_rule(self, rule_id):
+        # TODO Check if rule has time enforcement, if true then need to
+        #      remove from the queue.
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed

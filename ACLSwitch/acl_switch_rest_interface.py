@@ -158,7 +158,7 @@ class ACLSwitchRESTInterface(ControllerBase):
             return Response(status=400, body="Unable to parse JSON.")
         if not self.check_rule_json(ruleReq):
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.add_acl_Rule(ruleReq["ip_src"],
+        result = self.acl_switch_inst.add_acl_rule(ruleReq["ip_src"],
                                                     ruleReq["ip_dst"],
                                                     ruleReq["tp_proto"],
                                                     ruleReq["port_src"],
@@ -167,6 +167,30 @@ class ACLSwitchRESTInterface(ControllerBase):
         if result[0] == False:
             return Response(status=400, body=result[1])
         self.acl_switch_inst.distribute_single_rule(result[2])
+        return Response(status=200, body=result[1])
+
+    """
+    API call to add a rule which should be enforced for a period of time.
+    """
+    @route("acl_switch", url+"/acl_rules/time", methods=["POST"])
+    def acl_rule_add_time(self, req, ** kwargs):
+        try:
+            ruleReq = json.loads(req.body)
+        except:
+            return Response(status=400, body="Unable to parse JSON.")
+        if not self.check_rule_time_json(ruleReq):
+            return Response(status=400, body="Invalid JSON passed.")
+        result = self.acl_switch_inst.add_acl_rule_time(ruleReq["ip_src"],
+                                                        ruleReq["ip_dst"],
+                                                        ruleReq["tp_proto"],
+                                                        ruleReq["port_src"],
+                                                        ruleReq["port_dst"],
+                                                        ruleReq["role"],
+                                                        ruleReq["time_start"],
+                                                        ruleReq["time_duration"])
+        if result[0] == False:
+            return Response(status=400, body=result[1])
+        #self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 
     """
@@ -199,12 +223,13 @@ class ACLSwitchRESTInterface(ControllerBase):
             acl_formatted.insert(int(rule_id), {"rule_id":rule_id, "ip_src":rule.ip_src,
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
                                   "port_src":rule.port_src, "port_dst":rule.port_dst,
-                                  "role":rule.role})
+                                  "role":rule.role, "time_start":rule.time_start,
+                                  "time_duration":rule.time_duration})
         return acl_formatted
 
     """
-    Check that incoming JSON for an ACL has the required 5 fields:
-    "ip_src", "ip_dst", "tp_proto", "port_src" and "port_dst".
+    Check that incoming JSON for an ACL has the required 6 fields:
+    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst" and "role".
     
     @param ruleJSON - input from the client to check.
     @return - True if ruleJSON is valid, False otherwise.
@@ -223,6 +248,35 @@ class ACLSwitchRESTInterface(ControllerBase):
         if not "port_dst" in ruleJSON:
             return False
         if not "role" in ruleJSON:
+            return False
+        return True # everything is looking good!
+
+    """
+    Check that incoming JSON for an ACL has the required 6 fields:
+    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst", "role",
+    "time_start" and "time_duration".
+    
+    @param ruleJSON - input from the client to check.
+    @return - True if ruleJSON is valid, False otherwise.
+    """
+    def check_rule_time_json(self, ruleJSON):
+        if len(ruleJSON) != 8:
+            return False
+        if not "ip_src" in ruleJSON:
+            return False
+        if not "ip_dst" in ruleJSON:
+            return False
+        if not "tp_proto" in ruleJSON:
+            return False
+        if not "port_src" in ruleJSON:
+            return False
+        if not "port_dst" in ruleJSON:
+            return False
+        if not "role" in ruleJSON:
+            return False
+        if not "time_start" in ruleJSON:
+            return False
+        if not "time_duration" in ruleJSON:
             return False
         return True # everything is looking good!
 

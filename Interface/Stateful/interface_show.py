@@ -65,13 +65,15 @@ class ACLInterfaceShow:
                   + " returned.")
             return
         acl = resp.json()
-        table = PrettyTable(["Rule ID", "Source Address", "Destination Address",
-                             "Transport Protocol", "Source Port",
-                             "Destination Port", "Role"])
+        table = PrettyTable(["Rule ID", "Source Address",
+                             "Destination Address", "Transport Protocol",
+                             "Source Port", "Destination Port", "Role",
+                             "Start Time", "Duration(min)"])
         for rule in acl:
             table.add_row([rule["rule_id"], rule["ip_src"], rule["ip_dst"],
-                           rule["tp_proto"], rule["port_src"], rule["port_dst"],
-                           rule["role"]])
+                           rule["tp_proto"], rule["port_src"],
+                           rule["port_dst"], rule["role"],
+                           rule["time_start"], rule["time_duration"]])
         print table
 
     """

@@ -38,7 +38,7 @@ class ACLInterfaceRule:
                          " port_src port_dst role")
     TEXT_HELP_RULE_REMOVE = "\tRule to remove: rule_id"
     TEXT_HELP_RULE_TIME = ("\tRule to add: ip_src ip_dst transport_protocol"
-                          " port_src port_dst role time_start(e.g. 1345)"
+                          " port_src port_dst role time_start(e.g. 13:45)"
                           " duration(mins)")
     TIME_MAX_MINUTES = 1092
     TIME_MIN_MINUTES = 1
@@ -187,7 +187,7 @@ class ACLInterfaceRule:
             return
         # Check that the given time is valid
         try:
-            datetime.strptime(items[6], "%H%M")
+            datetime.strptime(items[6], "%H:%M")
         except:
             print self.TEXT_ERROR_SYNTAX_TIME_START        
             return

@@ -65,6 +65,7 @@ from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
 # Other
 from collections import namedtuple
 from datetime import datetime
+from ryu.lib import hub
 import json
 import signal
 import sys
@@ -160,13 +161,7 @@ class ACLSwitch(app_manager.RyuApp):
         num_roles = str(len(self.role_to_rules))
         num_rules = str(len(self.access_control_list))
         num_switches = str(len(self.connected_switches))
-        current_time = datetime.now()
-        if int(current_time.minute) > 9:
-            controller_time = (str(current_time.hour) + ":"
-                               + str(current_time.minute))
-        else:
-            controller_time = (str(current_time.hour) + ":0"
-                               + str(current_time.minute))
+        controller_time = datetime.now().strftime("%H:%M")
         return {"num_roles":num_roles, "num_rules":num_rules,
                 "num_switches":num_switches,
                 "controller_time":controller_time}
@@ -445,6 +440,10 @@ class ACLSwitch(app_manager.RyuApp):
                         "exists.", None)
         self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
+        #self.add_rule_time_queue(new_rule)
+        self.rule_time_queue.append(new_rule)
+        # Start a tasklet to distribute time-based rules
+        hub.spawn(self.distribute_rules_time)
         print("[+] Rule " + str(new_rule) + " created with id: "
               + str(rule_id) + ". To be enforced from " + str(time_start)
               + " for " + str(time_duration) + " minutes.")
@@ -497,7 +496,11 @@ class ACLSwitch(app_manager.RyuApp):
             priority = self.OFP_MAX_PRIORITY
             actions = []
             match = self.create_match(rule)
-            self.add_flow(datapath, priority, match, actions)
+            if rule.time_duration == "N\A":
+                self.add_flow(datapath, priority, match, actions)
+            else:
+                self.add_flow(datapath, priority, match, actions,
+                              time_limit=(int(rule.time_duration)*60))
 
     """
     Proactively distribute hardcoded firewall rules to the switch
@@ -516,6 +519,32 @@ class ACLSwitch(app_manager.RyuApp):
             actions = []
             match = self.create_match(rule)
             self.add_flow(datapath, priority, match, actions)
+
+    """
+    Distribute rules to switches when their time arises. An alarm must
+    be scheduled to trigger this function to distrbute rules when
+    needed.
+
+    The next alarm is scheduled once all other necessary operations
+    have been done.
+    """
+    def distribute_rules_time(self):
+        while True:
+            time_start = self.rule_time_queue[0].time_start
+            # Normalise next_time
+            next_scheduled = datetime.strptime(time_start, "%H:%M")
+            # The current time has to be normalised with the time in a rule
+            # (i.e. the date of each datetime object is the same) before a
+            # comparison can be made.
+            current_time = datetime.now().strftime("%H:%M:%S")
+            normalised_current = datetime.strptime(current_time, "%H:%M:%S")
+            # Compare the two times relative to the current time
+            time_diff = (next_scheduled - normalised_current).seconds
+            # Schedule the alarm to wait time_diff seconds
+            print("[!] WAITING " + str(time_diff) + " seconds.")
+            hub.sleep(time_diff)
+            self.distribute_single_rule(self.rule_time_queue[0])
+            break
 
     # Functions handling OpenFlow flow table entries
     

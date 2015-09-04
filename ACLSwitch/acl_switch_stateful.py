@@ -83,6 +83,7 @@ class ACLSwitch(app_manager.RyuApp):
         # Default priority is defined to be in the middle (0x8000 in 1.3)
         # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     ROLE_DEFAULT = "df"
+    TIME_PAUSE = 1
 
     _CONTEXTS = {"wsgi":WSGIApplication}
 
@@ -91,7 +92,8 @@ class ACLSwitch(app_manager.RyuApp):
     acl_id_count = 0
     connected_switches = {} # dpip:[roles]
     role_to_rules = {} # role:[rules]
-    rule_time_queue = []
+    rule_time_queue = [] # ordered by when a rule needs to be enforced 
+    gthread_rule_dist = None # Holds the green thread which distributes rules
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
@@ -394,7 +396,7 @@ class ACLSwitch(app_manager.RyuApp):
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role,
-                                 time_start="N\A", time_duration="N\A")
+                                 time_start="N/A", time_duration="N/A")
         for rule in self.access_control_list.values():
             if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
@@ -440,14 +442,56 @@ class ACLSwitch(app_manager.RyuApp):
                         "exists.", None)
         self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
-        #self.add_rule_time_queue(new_rule)
-        self.rule_time_queue.append(new_rule)
-        # Start a tasklet to distribute time-based rules
-        hub.spawn(self.distribute_rules_time)
+        self.schedule_rule(rule_id) # schedule the rule in the queue
         print("[+] Rule " + str(new_rule) + " created with id: "
               + str(rule_id) + ". To be enforced from " + str(time_start)
               + " for " + str(time_duration) + " minutes.")
         return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
+
+    """
+    STUFF
+    Inserted into an ordered list.
+
+    @param rule_id - 
+    """
+    # TODO add comments for this function
+    def schedule_rule(self, rule_id):
+        # Cases to check:
+        #   - if new rule is equal to another one then it should be
+        #     appended to the sub-list (currently there are no sub-lists)
+
+        if len(self.rule_time_queue) < 1:
+            # Queue is empty so just insert the rule and leave
+            self.rule_time_queue.append(rule_id)
+            # Start a green thread to distribute time-based rules
+            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            return
+
+        queue_head_id = self.rule_time_queue[0]
+        queue_head_rule = self.access_control_list[queue_head_id]
+        queue_head_time = datetime.strptime(queue_head_rule.time_start,
+                                            "%H:%M")
+        new_rule = self.access_control_list[rule_id]
+        new_rule_time = datetime.strptime(new_rule.time_start, "%H:%M")
+
+        # Get the current time and normalise it
+        cur_time = datetime.strptime(datetime.now().strftime("%H:%M"),
+                                     "%H:%M")
+
+        if cur_time < new_rule_time and new_rule_time < queue_head_time:
+            # The new rule needs to be scheduled before the current
+            # head of the queue. As a result, insert it to the front of
+            # the queue, kill the current green thread and restart it.
+            print "[DEBUG] new rule is earlier than queue head."
+            print "\n[DEBUG A]" + str(self.rule_time_queue)
+            self.rule_time_queue.insert(0,rule_id)
+            print "\n[DEBUG B]" + str(self.rule_time_queue)
+            hub.kill(self.gthread_rule_dist)
+            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            return
+
+        # Check if new_rule_time < cur_time, then it needs to be inserted 'tomorrow'
+        # now insert in order!
 
     """
     Remove a rule from the ACL then remove the associated flow table
@@ -458,14 +502,18 @@ class ACLSwitch(app_manager.RyuApp):
               message to be returned to the client.
     """
     def delete_acl_rule(self, rule_id):
-        # TODO Check if rule has time enforcement, if true then need to
-        #      remove from the queue.
         if rule_id not in self.access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
         rule = self.access_control_list[rule_id]
         del self.access_control_list[rule_id]
         self.role_to_rules[rule.role].remove(rule_id)
+        # The rule had time enforcement, it must be removed from the queue
+        # TODO do this properly! Might need to reschedule.
+        if rule.time_start != "N/A":
+            self.rule_time_queue.remove(rule_id)
+
+        # Send off delete flow messages to switches that hold the rule
         for switch in self.connected_switches:
             if rule.role not in self.connected_switches[switch]:
                 continue
@@ -496,7 +544,7 @@ class ACLSwitch(app_manager.RyuApp):
             priority = self.OFP_MAX_PRIORITY
             actions = []
             match = self.create_match(rule)
-            if rule.time_duration == "N\A":
+            if rule.time_duration == "N/A":
                 self.add_flow(datapath, priority, match, actions)
             else:
                 self.add_flow(datapath, priority, match, actions,
@@ -530,7 +578,12 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def distribute_rules_time(self):
         while True:
-            time_start = self.rule_time_queue[0].time_start
+            if len(self.rule_time_queue) < 1:
+                break
+
+            rule_id = self.rule_time_queue[0]
+            rule = self.access_control_list[rule_id]
+            time_start = rule.time_start
             # Normalise next_time
             next_scheduled = datetime.strptime(time_start, "%H:%M")
             # The current time has to be normalised with the time in a rule
@@ -543,8 +596,28 @@ class ACLSwitch(app_manager.RyuApp):
             # Schedule the alarm to wait time_diff seconds
             print("[!] WAITING " + str(time_diff) + " seconds.")
             hub.sleep(time_diff)
-            self.distribute_single_rule(self.rule_time_queue[0])
-            break
+
+            # Check that the queue is not empty
+            if len(self.rule_time_queue) < 1:
+                break
+            print "\n[DEBUG 1]" + str(self.rule_time_queue)
+            rule_id = self.rule_time_queue.pop(0) 
+            print "\n[DEBUG 2]" + str(self.rule_time_queue)
+            self.rule_time_queue.append(rule_id)
+            print "\n[DEBUG 3]" + str(self.rule_time_queue)
+
+            # Check that the current time matches the time of a rule at
+            # the top of the queue, if not then reschedule the alarm.
+            if rule.time_start != datetime.now().strftime("%H:%M"):
+                continue
+
+            self.distribute_single_rule(rule)
+
+            # Pause for moment to avoid flooding the switch with flow
+            # mod messages. This happens because time_diff will be
+            # evaluated again in the loop and it will be equal to 0
+            # until a second passes.
+            hub.sleep(self.TIME_PAUSE)
 
     # Functions handling OpenFlow flow table entries
     

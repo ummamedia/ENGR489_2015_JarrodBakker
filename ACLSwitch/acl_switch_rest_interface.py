@@ -216,15 +216,15 @@ class ACLSwitchRESTInterface(ControllerBase):
     @return - the acl formated in JSON.
     """
     def format_acl_output(self):
-        acl_formatted = []
+        acl_formatted = {}
         for rule_id in self.acl_switch_inst.access_control_list:
             rule = self.acl_switch_inst.access_control_list[rule_id]
             # Order the list as it's created by using rule_id
-            acl_formatted.insert(int(rule_id), {"rule_id":rule_id, "ip_src":rule.ip_src,
+            acl_formatted[int(rule_id)] = {"rule_id":rule_id, "ip_src":rule.ip_src,
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
                                   "port_src":rule.port_src, "port_dst":rule.port_dst,
                                   "role":rule.role, "time_start":rule.time_start,
-                                  "time_duration":rule.time_duration})
+                                  "time_duration":rule.time_duration}
         return acl_formatted
 
     """

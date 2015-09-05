@@ -65,11 +65,13 @@ class ACLInterfaceShow:
                   + " returned.")
             return
         acl = resp.json()
+        acl_keys = sorted(acl, key=lambda a: int(a))
         table = PrettyTable(["Rule ID", "Source Address",
                              "Destination Address", "Transport Protocol",
                              "Source Port", "Destination Port", "Role",
                              "Start Time", "Duration(min)"])
-        for rule in acl:
+        for key in acl_keys:
+            rule = acl[key]
             table.add_row([rule["rule_id"], rule["ip_src"], rule["ip_dst"],
                            rule["tp_proto"], rule["port_src"],
                            rule["port_dst"], rule["role"],

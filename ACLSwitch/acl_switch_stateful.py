@@ -64,8 +64,8 @@ from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
 
 # Other
 from collections import namedtuple
-from datetime import datetime
 from ryu.lib import hub
+import datetime as dt
 import json
 import signal
 import sys
@@ -163,7 +163,7 @@ class ACLSwitch(app_manager.RyuApp):
         num_roles = str(len(self.role_to_rules))
         num_rules = str(len(self.access_control_list))
         num_switches = str(len(self.connected_switches))
-        controller_time = datetime.now().strftime("%H:%M")
+        controller_time = dt.datetime.now().strftime("%H:%M")
         return {"num_roles":num_roles, "num_rules":num_rules,
                 "num_switches":num_switches,
                 "controller_time":controller_time}
@@ -452,30 +452,30 @@ class ACLSwitch(app_manager.RyuApp):
     STUFF
     Inserted into an ordered list.
 
-    @param rule_id - 
+    @param new_rule_id - 
     """
     # TODO add comments for this function
-    def schedule_rule(self, rule_id):
+    def schedule_rule(self, new_rule_id):
         # Cases to check:
         #   - if new rule is equal to another one then it should be
         #     appended to the sub-list (currently there are no sub-lists)
 
         if len(self.rule_time_queue) < 1:
             # Queue is empty so just insert the rule and leave
-            self.rule_time_queue.append(rule_id)
+            self.rule_time_queue.append(new_rule_id)
             # Start a green thread to distribute time-based rules
             self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
         queue_head_id = self.rule_time_queue[0]
         queue_head_rule = self.access_control_list[queue_head_id]
-        queue_head_time = datetime.strptime(queue_head_rule.time_start,
+        queue_head_time = dt.datetime.strptime(queue_head_rule.time_start,
                                             "%H:%M")
-        new_rule = self.access_control_list[rule_id]
-        new_rule_time = datetime.strptime(new_rule.time_start, "%H:%M")
+        new_rule = self.access_control_list[new_rule_id]
+        new_rule_time = dt.datetime.strptime(new_rule.time_start, "%H:%M")
 
         # Get the current time and normalise it
-        cur_time = datetime.strptime(datetime.now().strftime("%H:%M"),
+        cur_time = dt.datetime.strptime(dt.datetime.now().strftime("%H:%M"),
                                      "%H:%M")
 
         if cur_time < new_rule_time and new_rule_time < queue_head_time:
@@ -484,14 +484,47 @@ class ACLSwitch(app_manager.RyuApp):
             # the queue, kill the current green thread and restart it.
             print "[DEBUG] new rule is earlier than queue head."
             print "\n[DEBUG A]" + str(self.rule_time_queue)
-            self.rule_time_queue.insert(0,rule_id)
+            self.rule_time_queue.insert(0,new_rule_id)
             print "\n[DEBUG B]" + str(self.rule_time_queue)
             hub.kill(self.gthread_rule_dist)
             self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
-        # Check if new_rule_time < cur_time, then it needs to be inserted 'tomorrow'
+        if new_rule_time < cur_time:
+            # The new rule has a 'smaller' time value than the current
+            # time but its time for scheduling has already passed. This
+            # means that the rule should be scheduled for tomorrow. To
+            # correct the comparisons we'll add a day onto the datetime
+            # value.
+            print "[DEBUG timehack 1] " + str(new_rule_time)
+            new_rule_time = new_rule_time + dt.timedelta(1)
+            print "[DEBUG timehack 2] " + str(new_rule_time)
+
         # now insert in order!
+        len_queue = len(self.rule_time_queue)
+        for i in range(len_queue):
+            if i == (len_queue-1):
+                # Reached the end of the queue
+                self.rule_time_queue.append(new_rule_id)
+                break
+            
+            rule_i = self.access_control_list[self.rule_time_queue[i]]
+            rule_i1 = self.access_control_list[self.rule_time_queue[i+1]]
+
+            rule_i_time = dt.datetime.strptime(rule_i.time_start, "%H:%M")
+            rule_i1_time = dt.datetime.strptime(rule_i1.time_start, "%H:%M")
+            
+            if rule_i1_time < rule_i_time:
+                # rule_i1_time may be smaller than rule_i_time but it
+                # may be scheduled for tomorrow.
+                rule_i1_time = rule_i1_time + dt.timedelta(1)
+
+            if rule_i_time < new_rule_time and new_rule_time < rule_i1_time:
+                self.rule_time_queue.insert(i+1, new_rule_id)
+                break
+        print "[DEBUG scehdule end] queue: " + str(self.rule_time_queue)
+
+            
 
     """
     Remove a rule from the ACL then remove the associated flow table
@@ -585,12 +618,12 @@ class ACLSwitch(app_manager.RyuApp):
             rule = self.access_control_list[rule_id]
             time_start = rule.time_start
             # Normalise next_time
-            next_scheduled = datetime.strptime(time_start, "%H:%M")
+            next_scheduled = dt.datetime.strptime(time_start, "%H:%M")
             # The current time has to be normalised with the time in a rule
             # (i.e. the date of each datetime object is the same) before a
             # comparison can be made.
-            current_time = datetime.now().strftime("%H:%M:%S")
-            normalised_current = datetime.strptime(current_time, "%H:%M:%S")
+            current_time = dt.datetime.now().strftime("%H:%M:%S")
+            normalised_current = dt.datetime.strptime(current_time, "%H:%M:%S")
             # Compare the two times relative to the current time
             time_diff = (next_scheduled - normalised_current).seconds
             # Schedule the alarm to wait time_diff seconds
@@ -608,7 +641,7 @@ class ACLSwitch(app_manager.RyuApp):
 
             # Check that the current time matches the time of a rule at
             # the top of the queue, if not then reschedule the alarm.
-            if rule.time_start != datetime.now().strftime("%H:%M"):
+            if rule.time_start != dt.datetime.now().strftime("%H:%M"):
                 continue
 
             self.distribute_single_rule(rule)

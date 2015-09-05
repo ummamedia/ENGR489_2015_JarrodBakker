@@ -392,7 +392,6 @@ class ACLSwitch(app_manager.RyuApp):
         if role not in self.role_to_rules:
             return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
-        self.acl_id_count += 1 # need to update to keep ids unique
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role,
@@ -401,6 +400,7 @@ class ACLSwitch(app_manager.RyuApp):
             if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
                         "exists.", None)
+        self.acl_id_count += 1 # need to update to keep ids unique
         self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
         print("[+] Rule " + str(new_rule) + " created with id: "
@@ -430,7 +430,6 @@ class ACLSwitch(app_manager.RyuApp):
         if role not in self.role_to_rules:
             return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
-        self.acl_id_count += 1 # need to update to keep ids unique
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
                                  port_dst=port_dst, role=role,
@@ -440,9 +439,10 @@ class ACLSwitch(app_manager.RyuApp):
             if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
                         "exists.", None)
+        self.acl_id_count += 1 # need to update to keep ids unique
         self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
-        self.schedule_rule(rule_id) # schedule the rule in the queue
+        self.add_to_queue(rule_id) # schedule the rule in the queue
         print("[+] Rule " + str(new_rule) + " created with id: "
               + str(rule_id) + ". To be enforced from " + str(time_start)
               + " for " + str(time_duration) + " minutes.")
@@ -452,22 +452,18 @@ class ACLSwitch(app_manager.RyuApp):
     STUFF
     Inserted into an ordered list.
 
-    @param new_rule_id - 
+    @param new_rule_id - ID of the rule which needs to be scheduled.
     """
     # TODO add comments for this function
-    def schedule_rule(self, new_rule_id):
-        # Cases to check:
-        #   - if new rule is equal to another one then it should be
-        #     appended to the sub-list (currently there are no sub-lists)
-
+    def add_to_queue(self, new_rule_id):
         if len(self.rule_time_queue) < 1:
             # Queue is empty so just insert the rule and leave
-            self.rule_time_queue.append(new_rule_id)
+            self.rule_time_queue.append([new_rule_id])
             # Start a green thread to distribute time-based rules
             self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
-        queue_head_id = self.rule_time_queue[0]
+        queue_head_id = self.rule_time_queue[0][0]
         queue_head_rule = self.access_control_list[queue_head_id]
         queue_head_time = dt.datetime.strptime(queue_head_rule.time_start,
                                             "%H:%M")
@@ -482,36 +478,39 @@ class ACLSwitch(app_manager.RyuApp):
             # The new rule needs to be scheduled before the current
             # head of the queue. As a result, insert it to the front of
             # the queue, kill the current green thread and restart it.
-            print "[DEBUG] new rule is earlier than queue head."
-            print "\n[DEBUG A]" + str(self.rule_time_queue)
-            self.rule_time_queue.insert(0,new_rule_id)
-            print "\n[DEBUG B]" + str(self.rule_time_queue)
+            self.rule_time_queue.insert(0,[new_rule_id])
             hub.kill(self.gthread_rule_dist)
             self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
-        if new_rule_time < cur_time:
+        # Now insert in order
+        len_queue = len(self.rule_time_queue)
+        new_rule_time_store = new_rule_time
+        for i in range(len_queue):
+            # Reset any changes made by timedelta
+            new_rule_time = new_rule_time_store
+
+            rule_i = self.access_control_list[self.rule_time_queue[i][0]]
+            rule_i_time = dt.datetime.strptime(rule_i.time_start, "%H:%M")
+            
+            if new_rule_time == rule_i_time:
+                self.rule_time_queue[i].append(new_rule_id)
+                break
+            
+            if new_rule_time < cur_time:
             # The new rule has a 'smaller' time value than the current
             # time but its time for scheduling has already passed. This
             # means that the rule should be scheduled for tomorrow. To
             # correct the comparisons we'll add a day onto the datetime
             # value.
-            print "[DEBUG timehack 1] " + str(new_rule_time)
-            new_rule_time = new_rule_time + dt.timedelta(1)
-            print "[DEBUG timehack 2] " + str(new_rule_time)
+                new_rule_time = new_rule_time + dt.timedelta(1)
 
-        # now insert in order!
-        len_queue = len(self.rule_time_queue)
-        for i in range(len_queue):
             if i == (len_queue-1):
                 # Reached the end of the queue
-                self.rule_time_queue.append(new_rule_id)
+                self.rule_time_queue.append([new_rule_id])
                 break
             
-            rule_i = self.access_control_list[self.rule_time_queue[i]]
-            rule_i1 = self.access_control_list[self.rule_time_queue[i+1]]
-
-            rule_i_time = dt.datetime.strptime(rule_i.time_start, "%H:%M")
+            rule_i1 = self.access_control_list[self.rule_time_queue[i+1][0]]
             rule_i1_time = dt.datetime.strptime(rule_i1.time_start, "%H:%M")
             
             if rule_i1_time < rule_i_time:
@@ -520,11 +519,9 @@ class ACLSwitch(app_manager.RyuApp):
                 rule_i1_time = rule_i1_time + dt.timedelta(1)
 
             if rule_i_time < new_rule_time and new_rule_time < rule_i1_time:
-                self.rule_time_queue.insert(i+1, new_rule_id)
+                self.rule_time_queue.insert(i+1, [new_rule_id])
                 break
-        print "[DEBUG scehdule end] queue: " + str(self.rule_time_queue)
-
-            
+        print "[DEBUG] queue: " + str(self.rule_time_queue)
 
     """
     Remove a rule from the ACL then remove the associated flow table
@@ -611,10 +608,11 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def distribute_rules_time(self):
         while True:
+            # Check that the queue is not empty
             if len(self.rule_time_queue) < 1:
                 break
 
-            rule_id = self.rule_time_queue[0]
+            rule_id = self.rule_time_queue[0][0]
             rule = self.access_control_list[rule_id]
             time_start = rule.time_start
             # Normalise next_time
@@ -630,21 +628,22 @@ class ACLSwitch(app_manager.RyuApp):
             print("[!] WAITING " + str(time_diff) + " seconds.")
             hub.sleep(time_diff)
 
-            # Check that the queue is not empty
+            # Check that the queue is not empty again
             if len(self.rule_time_queue) < 1:
                 break
-            print "\n[DEBUG 1]" + str(self.rule_time_queue)
-            rule_id = self.rule_time_queue.pop(0) 
-            print "\n[DEBUG 2]" + str(self.rule_time_queue)
-            self.rule_time_queue.append(rule_id)
-            print "\n[DEBUG 3]" + str(self.rule_time_queue)
 
+            to_dist = self.rule_time_queue.pop(0)
+            self.rule_time_queue.append(to_dist)
+            
+            rule = self.access_control_list[to_dist[0]]
             # Check that the current time matches the time of a rule at
             # the top of the queue, if not then reschedule the alarm.
             if rule.time_start != dt.datetime.now().strftime("%H:%M"):
                 continue
-
-            self.distribute_single_rule(rule)
+            
+            # Distribute the rules that need to be distributed now
+            for rule_id in to_dist:
+                self.distribute_single_rule(self.access_control_list[rule_id])
 
             # Pause for moment to avoid flooding the switch with flow
             # mod messages. This happens because time_diff will be

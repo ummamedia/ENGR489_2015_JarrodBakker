@@ -150,6 +150,9 @@ class ACLSwitch(app_manager.RyuApp):
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
    
+   # Functions used for fetching information on the current state of
+   # ACLSwitch.
+      
     """
     Compile and return information on ACLSwitch. The information is
     comprised of the number of roles, the number of ACL rules, the
@@ -168,16 +171,60 @@ class ACLSwitch(app_manager.RyuApp):
         return {"num_roles":num_roles, "num_rules":num_rules,
                 "num_switches":num_switches,
                 "controller_time":controller_time}
-
-    # Functions handling the management of switch roles
-
+    
     """
-    List the currently available roles.
+    Return a list of the currently available roles.
 
     @return - a list of the currently available roles.
     """
-    def role_list(self):
+    def get_role_list(self):
         return self.role_to_rules.keys()
+    
+    """
+    Return the ACL as a formatted dict.
+    
+    @return - a formatted dict representing the ACL.
+    """
+    def get_acl(self):
+        acl_formatted = {}
+        for rule_id in self.access_control_list:
+            rule = self.access_control_list[rule_id]
+            # Order the list as it's created by using rule_id
+            acl_formatted[int(rule_id)] = {"rule_id":rule_id, "ip_src":rule.ip_src,
+                                  "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
+                                  "port_src":rule.port_src, "port_dst":rule.port_dst,
+                                  "role":rule.role, "time_start":rule.time_start,
+                                  "time_duration":rule.time_duration}
+        return acl_formatted
+    
+    """
+    Return a dict of the currently connected switches and their
+    associated roles.
+    
+    @return - a dict of the currently connected switches and the
+              roles associated with them.   
+    """
+    def get_switches(self):
+        return self.connected_switches
+     
+    """
+    Return a list of the time constrained rules mapped to their
+    scheduled times. I.e. [["HH:MM","<rule id>","<rule_id>",...],...]
+    
+    @return - a list representing the time constrained rules mapped to
+              their times.
+    """
+    def get_time_queue(self):
+        queue_formatted = []
+        for time_period in self.rule_time_queue:
+            time_formatted = []
+            time = self.access_control_list[time_period[0]].time_start
+            time_formatted.append(time)
+            time_formatted.extend(time_period)
+            queue_formatted.append(time_formatted)
+        return queue_formatted
+
+    # Functions handling the management of switch roles
 
     """
     Create a role which can then be assigned to a switch.

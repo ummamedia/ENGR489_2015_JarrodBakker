@@ -24,11 +24,12 @@ class ACLInterfaceShow:
     PROMPT_SHOW = "ACL Switch (show) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_SHOW = "\tinfo, role, rule OR switch"
+    TEXT_HELP_SHOW = "\tinfo, queue, role, rule OR switch"
     URL_ACLSWITCH_INFO = "http://127.0.0.1:8080/acl_switch" # using loopback
     URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
     URL_ACLSWITCH_RULE = "http://127.0.0.1:8080/acl_switch/acl_rules" # using loopback
     URL_ACLSWITCH_SWITCH = "http://127.0.0.1:8080/acl_switch/switches" # using loopback
+    URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time" # using loopback
 
     """
     Show interface. The user has the option to either view the contents of the
@@ -40,6 +41,8 @@ class ACLInterfaceShow:
         buf_in = raw_input(self.PROMPT_SHOW)
         if buf_in == "rule":
             self.get_acl()
+        elif buf_in == "queue":
+            self.get_time_queue()
         elif buf_in == "role":
             self.get_role()
         elif buf_in == "switch":
@@ -76,6 +79,26 @@ class ACLInterfaceShow:
                            rule["tp_proto"], rule["port_src"],
                            rule["port_dst"], rule["role"],
                            rule["time_start"], rule["time_duration"]])
+        print table
+
+    """
+    Fetch the queue of rules that have been time scheduled.
+    """
+    def get_time_queue(self):
+        print("Fetching time queue...")
+        try:
+            resp = requests.get(self.URL_ACLSWITCH_TIME)
+        except:
+            print self.TEXT_ERROR_CONNECTION
+            return
+        if resp.status_code != 200:
+            print("Error fetching resource, HTTP " + str(resp.status_code)
+                  + " returned.")
+            return
+        queue = resp.json()
+        table = PrettyTable(["Start Time", "Rule IDs"])
+        for entry in queue:
+            table.add_row([entry[0], ','.join(entry[1:])])
         print table
 
     """

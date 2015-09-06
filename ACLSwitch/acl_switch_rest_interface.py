@@ -43,7 +43,7 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     @route("acl_switch", url+"/switches", methods=["GET"])
     def switch_role_list(self, req, **kwargs):
-        body = json.dumps(self.acl_switch_inst.connected_switches)
+        body = json.dumps(self.acl_switch_inst.get_switches())
         return Response(content_type="application/json", body=body)
 
     """
@@ -51,8 +51,25 @@ class ACLSwitchRESTInterface(ControllerBase):
     """
     @route("acl_switch", url+"/switch_roles", methods=["GET"])
     def role_list(self, req, **kwargs):
-        body = json.dumps({"Roles":self.acl_switch_inst.role_list()})
-        return Response(content_type="application/json", body=body) 
+        body = json.dumps({"Roles":self.acl_switch_inst.get_role_list()})
+        return Response(content_type="application/json", body=body)
+    
+    """
+    API call to return the current contents of the ACL.
+    """
+    @route("acl_switch", url+"/acl_rules", methods=["GET"])
+    def acl_list(self, req, **kwargs):
+        acl = self.acl_switch_inst.get_acl()
+        body = json.dumps(acl)
+        return Response(content_type="application/json", body=body)
+
+    """
+    API call to return a list representing the queue of scheduled 
+    """
+    @route("acl_switch", url+"/acl_rules/time", methods=["GET"])
+    def time_queue_list(self, req, **kwargs):
+        body = json.dumps(self.acl_switch_inst.get_time_queue())
+        return Response(content_type="application/json", body=body)
 
     """
     API call to create a role.
@@ -137,15 +154,6 @@ class ACLSwitchRESTInterface(ControllerBase):
         else:
             status = 400
         return Response(status=status, body=result[1])
-    
-    """
-    API call to return the current contents of the ACL.
-    """
-    @route("acl_switch", url+"/acl_rules", methods=["GET"])
-    def list_acl(self, req, **kwargs):
-        acl = self.format_acl_output()
-        body = json.dumps(acl)
-        return Response(content_type="application/json", body=body)
 
     """
     API call to add a rule to the ACL.
@@ -208,24 +216,6 @@ class ACLSwitchRESTInterface(ControllerBase):
         else:
             status = 400
         return Response(status=status, body=result[1])
-
-    """
-    Turn the ACL into a dictionary for that it can be easily converted
-    into JSON.
-    
-    @return - the acl formated in JSON.
-    """
-    def format_acl_output(self):
-        acl_formatted = {}
-        for rule_id in self.acl_switch_inst.access_control_list:
-            rule = self.acl_switch_inst.access_control_list[rule_id]
-            # Order the list as it's created by using rule_id
-            acl_formatted[int(rule_id)] = {"rule_id":rule_id, "ip_src":rule.ip_src,
-                                  "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
-                                  "port_src":rule.port_src, "port_dst":rule.port_dst,
-                                  "role":rule.role, "time_start":rule.time_start,
-                                  "time_duration":rule.time_duration}
-        return acl_formatted
 
     """
     Check that incoming JSON for an ACL has the required 6 fields:

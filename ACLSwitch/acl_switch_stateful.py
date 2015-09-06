@@ -141,7 +141,8 @@ class ACLSwitch(app_manager.RyuApp):
                 self.role_create(config["role"])
             elif "rule_time" in config:
                 rule = config["rule_time"]
-                self.add_acl_rule_time(rule["ip_src"], rule["ip_dst"],
+                # TODO
+                self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
                                        rule["tp_proto"], rule["port_src"],
                                        rule["port_dst"], rule["role"],
                                        rule["time_start"],
@@ -364,8 +365,6 @@ class ACLSwitch(app_manager.RyuApp):
     @return - True is equal, False otherwise.
     """
     def compare_acl_rules(self, rule_1, rule_2):
-        # TODO Compare the times, allow a rule to be added multiple times
-        #      if times are different.
         return ((self.ip_to_string(rule_1.ip_src)==self.ip_to_string(rule_2.ip_src)) and
                 (self.ip_to_string(rule_1.ip_dst)==self.ip_to_string(rule_2.ip_dst)) and
                 (rule_1.tp_proto==rule_2.tp_proto) and
@@ -382,42 +381,6 @@ class ACLSwitch(app_manager.RyuApp):
     @param port_src - the Transport Layer source port to match.
     @param port_dst - the Transport Layer destination port to match.
     @param role - the role the rule should be associated with.
-    @return - a tuple indicating if the operation was a success, a message
-              to be returned to the client and the new created rule. This
-              is useful in the case where a single rule has been created
-              and needs to be distributed among switches.
-    """
-    def add_acl_rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
-                     role):
-        if role not in self.role_to_rules:
-            return (False, "Role " + role + " was not recognised.", None)
-        rule_id = str(self.acl_id_count)
-        new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
-                                 tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst, role=role,
-                                 time_start="N/A", time_duration="N/A")
-        for rule in self.access_control_list.values():
-            if self.compare_acl_rules(new_rule, rule):
-                return (False, "New rule was not created, it already "
-                        "exists.", None)
-        self.acl_id_count += 1 # need to update to keep ids unique
-        self.access_control_list[rule_id] = new_rule
-        self.role_to_rules[role].append(rule_id)
-        print("[+] Rule " + str(new_rule) + " created with id: "
-              + str(rule_id))
-        return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
-   
-    """
-    Add a rule to the ACL by creating an entry then appending it to the
-    list. If the rule needs to be enforced at specific times then it is
-    noted in rule_time_queue.
-    
-    @param ip_src - the source IP address to match.
-    @param ip_dst - the destination IP address to match.
-    @param tp_proto - the Transport Layer (layer 4) protocol to match.
-    @param port_src - the Transport Layer source port to match.
-    @param port_dst - the Transport Layer destination port to match.
-    @param role - the role the rule should be associated with.
     @param time_start - when the rule should start being enforced.
     @param time_duration - how long the rule should be enforced for.
     @return - a tuple indicating if the operation was a success, a message
@@ -425,8 +388,8 @@ class ACLSwitch(app_manager.RyuApp):
               is useful in the case where a single rule has been created
               and needs to be distributed among switches.
     """
-    def add_acl_rule_time(self, ip_src, ip_dst, tp_proto, port_src,
-                          port_dst, role, time_start, time_duration):
+    def add_acl_rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
+                     role, time_start="N/A", time_duration="N/A"):
         if role not in self.role_to_rules:
             return (False, "Role " + role + " was not recognised.", None)
         rule_id = str(self.acl_id_count)
@@ -442,19 +405,52 @@ class ACLSwitch(app_manager.RyuApp):
         self.acl_id_count += 1 # need to update to keep ids unique
         self.access_control_list[rule_id] = new_rule
         self.role_to_rules[role].append(rule_id)
-        self.add_to_queue(rule_id) # schedule the rule in the queue
+        if time_start != "N/A":
+            self.add_to_queue(rule_id) # schedule the rule in the queue
         print("[+] Rule " + str(new_rule) + " created with id: "
-              + str(rule_id) + ". To be enforced from " + str(time_start)
-              + " for " + str(time_duration) + " minutes.")
+              + str(rule_id))
         return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
-
+   
     """
-    STUFF
-    Inserted into an ordered list.
+    Remove a rule from the ACL then remove the associated flow table
+    entries from the appropriate switches.
+    
+    @param rule_id - id of the rule to be removed.
+    @return - a tuple indicating if the operation was a success and a
+              message to be returned to the client.
+    """
+    def delete_acl_rule(self, rule_id):
+        if rule_id not in self.access_control_list:
+            return (False, "Invalid rule id given: " + rule_id + ".")
+        # The user passed through a valid rule_id so we can proceed
+        rule = self.access_control_list[rule_id]
+        del self.access_control_list[rule_id]
+        self.role_to_rules[rule.role].remove(rule_id)
+        # The rule had time enforcement, it must be removed from the queue
+        if rule.time_start != "N/A":
+            self.remove_from_queue(rule_id)
+
+        # Send off delete flow messages to switches that hold the rule
+        for switch in self.connected_switches:
+            if rule.role not in self.connected_switches[switch]:
+                continue
+            match = self.create_match(rule)
+            datapath = api.get_datapath(self, switch)
+            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+        print("[+] Rule " + str(rule) + " with id: " + str(rule_id)
+              + " removed.")
+        return (True, "Rule with id \'" + rule_id + "\' was deleted.")
+
+    # Functions handling the adding and removal of rules to and from
+    # the queue.
+    
+    """
+    Insert the ID of a time constrained rule into an ordered queue.
+    When adding the rule it is necessary to check current time of day
+    and the times of other rules within the queue.
 
     @param new_rule_id - ID of the rule which needs to be scheduled.
     """
-    # TODO add comments for this function
     def add_to_queue(self, new_rule_id):
         if len(self.rule_time_queue) < 1:
             # Queue is empty so just insert the rule and leave
@@ -521,38 +517,30 @@ class ACLSwitch(app_manager.RyuApp):
             if rule_i_time < new_rule_time and new_rule_time < rule_i1_time:
                 self.rule_time_queue.insert(i+1, [new_rule_id])
                 break
-        print "[DEBUG] queue: " + str(self.rule_time_queue)
-
-    """
-    Remove a rule from the ACL then remove the associated flow table
-    entries from the appropriate switches.
     
-    @param rule_id - id of the rule to be removed.
-    @return - a tuple indicating if the operation was a success and a
-              message to be returned to the client.
     """
-    def delete_acl_rule(self, rule_id):
-        if rule_id not in self.access_control_list:
-            return (False, "Invalid rule id given: " + rule_id + ".")
-        # The user passed through a valid rule_id so we can proceed
-        rule = self.access_control_list[rule_id]
-        del self.access_control_list[rule_id]
-        self.role_to_rules[rule.role].remove(rule_id)
-        # The rule had time enforcement, it must be removed from the queue
-        # TODO do this properly! Might need to reschedule.
-        if rule.time_start != "N/A":
-            self.rule_time_queue.remove(rule_id)
-
-        # Send off delete flow messages to switches that hold the rule
-        for switch in self.connected_switches:
-            if rule.role not in self.connected_switches[switch]:
-                continue
-            match = self.create_match(rule)
-            datapath = api.get_datapath(self, switch)
-            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
-        print("[+] Rule " + str(rule) + " with id: " + str(rule_id)
-              + " removed.")
-        return (True, "Rule with id \'" + rule_id + "\' was deleted.")
+    Remove a rule_id from the queue of time scheduled ACL rules. If
+    rule_id is at the head of the queue and it is the only rule that
+    will be scheduled at its time, then the green thread managing the
+    distribution of rules will need to be reset.
+    
+    @param new_rule_id - ID of the rule which needs to be scheduled.
+    """
+    def remove_from_queue(self, rule_id):
+        queue_head = True
+        for time_period in self.rule_time_queue:
+            for item in time_period:
+                if item == rule_id:
+                    time_period.remove(rule_id) 
+                    # Was this the only rule being scheduled
+                    # at rule_id's time?
+                    if len(time_period) < 1:
+                        self.rule_time_queue.remove(time_period)
+                        if queue_head:
+                            hub.kill(self.gthread_rule_dist)
+                            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+                    return
+            queue_head = False
 
     # Functions handling ACL rule distribution
 

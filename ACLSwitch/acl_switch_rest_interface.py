@@ -180,7 +180,7 @@ class ACLSwitchRESTInterface(ControllerBase):
             return Response(status=400, body="Unable to parse JSON.")
         if not self.check_rule_time_json(ruleReq):
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.add_acl_rule_time(ruleReq["ip_src"],
+        result = self.acl_switch_inst.add_acl_rule(ruleReq["ip_src"],
                                                         ruleReq["ip_dst"],
                                                         ruleReq["tp_proto"],
                                                         ruleReq["port_src"],

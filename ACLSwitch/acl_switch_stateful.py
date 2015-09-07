@@ -60,7 +60,7 @@ from netaddr import IPAddress
 
 # REST interface
 from ryu.app.wsgi import WSGIApplication
-from ryu.ENGR489_2015_JarrodBakker.ACLSwitch import acl_switch_rest_interface
+import acl_switch_rest
 
 # Other
 from collections import namedtuple
@@ -112,7 +112,7 @@ class ACLSwitch(app_manager.RyuApp):
         
         # Create an object for the REST interface
         wsgi = kwargs['wsgi']
-        wsgi.register(acl_switch_rest_interface.ACLSwitchRESTInterface, {acl_switch_instance_name : self})
+        wsgi.register(acl_switch_rest.ACLSwitchREST, {acl_switch_instance_name : self})
 
     """
     Read in ACL rules from file filename. Note that the values passed
@@ -315,14 +315,6 @@ class ACLSwitch(app_manager.RyuApp):
     # Functions handling the use of the ACL
 
     """
-    Return the size of the ACL.
-
-    @return - the size of the ACL
-    """
-    def acl_size(self):
-        return len(self.access_control_list)
-
-    """
     Return the IP version being used given the source and destination
     addresses. 
 
@@ -453,6 +445,8 @@ class ACLSwitch(app_manager.RyuApp):
         self.role_to_rules[role].append(rule_id)
         if time_start != "N/A":
             self.add_to_queue(rule_id) # schedule the rule in the queue
+        else:
+            self.distribute_single_rule(new_rule)
         print("[+] Rule " + str(new_rule) + " created with id: "
               + str(rule_id))
         return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
@@ -612,7 +606,7 @@ class ACLSwitch(app_manager.RyuApp):
                 self.add_flow(datapath, priority, match, actions)
             else:
                 self.add_flow(datapath, priority, match, actions,
-                              time_limit=(int(rule.time_duration)))
+                              time_limit=(int(rule.time_duration)*60))
 
     """
     Proactively distribute hardcoded firewall rules to the switch

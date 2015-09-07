@@ -18,10 +18,10 @@ import json
 acl_switch_instance_name = "acl_switch_app"
 url = "/acl_switch"
 
-class ACLSwitchRESTInterface(ControllerBase):
+class ACLSwitchREST(ControllerBase):
 
     def __init__(self, req, link, data, **config):
-        super(ACLSwitchRESTInterface, self).__init__(req, link, data, **config)
+        super(ACLSwitchREST, self).__init__(req, link, data, **config)
         self.acl_switch_inst = data[acl_switch_instance_name]
    
     """
@@ -174,7 +174,6 @@ class ACLSwitchRESTInterface(ControllerBase):
                                                     ruleReq["role"])
         if result[0] == False:
             return Response(status=400, body=result[1])
-        self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 
     """
@@ -198,7 +197,6 @@ class ACLSwitchRESTInterface(ControllerBase):
                                                         ruleReq["time_duration"])
         if result[0] == False:
             return Response(status=400, body=result[1])
-        #self.acl_switch_inst.distribute_single_rule(result[2])
         return Response(status=200, body=result[1])
 
     """

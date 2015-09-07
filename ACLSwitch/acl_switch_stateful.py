@@ -141,7 +141,6 @@ class ACLSwitch(app_manager.RyuApp):
                 self.role_create(config["role"])
             elif "rule_time" in config:
                 rule = config["rule_time"]
-                # TODO
                 self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
                                        rule["tp_proto"], rule["port_src"],
                                        rule["port_dst"], rule["role"],
@@ -613,7 +612,7 @@ class ACLSwitch(app_manager.RyuApp):
                 self.add_flow(datapath, priority, match, actions)
             else:
                 self.add_flow(datapath, priority, match, actions,
-                              time_limit=(int(rule.time_duration)*60))
+                              time_limit=(int(rule.time_duration)))
 
     """
     Proactively distribute hardcoded firewall rules to the switch

@@ -202,7 +202,7 @@ class ACLInterfaceRule:
             return
         add_req = self.rule_time_to_json(items[0], items[1], items[2],
                                          items[3], items[4], items[5],
-                                         items[6], items[7])
+                                         items[6], str(duration*60))
         try:
             resp = requests.post(self.URL_ACLSWITCH_TIME, data=add_req,
                                 headers = {"Content-type": "application/json"})

@@ -7,7 +7,7 @@
 # Note that this application must be run on the controller itself.
 #
 # This file contains the logic for handling the assignment or removal of
-# role to and from switches. This allows for much richer network security
+# policy to and from switches. This allows for much richer network security
 # policy enforcement.
 #
 # Author: Jarrod N. Bakker
@@ -17,54 +17,54 @@
 import json
 import requests
 
-class ACLInterfaceRole:
+class ACLInterfacePolicy:
 
     # Constants
-    PROMPT_ROLE = "ACL Switch (role) > "
-    PROMPT_ROLE_ASSIGN = "ACL Switch (role -> assign) > "
-    PROMPT_ROLE_CREATE = "ACL Switch (role -> create) > "
-    PROMPT_ROLE_DELETE = "ACL Switch (role -> delete) > "
-    PROMPT_ROLE_REMOVE = "ACL Switch (role -> remove) > "
+    PROMPT_POLICY = "ACL Switch (policy) > "
+    PROMPT_POLICY_ASSIGN = "ACL Switch (policy -> assign) > "
+    PROMPT_POLICY_CREATE = "ACL Switch (policy -> create) > "
+    PROMPT_POLICY_DELETE = "ACL Switch (policy -> delete) > "
+    PROMPT_POLICY_REMOVE = "ACL Switch (policy -> remove) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_ROLE = "\tcreate, delete (role), assign OR remove (assignment)"
-    TEXT_HELP_ROLE_ASSIGN = "\tRole to assign: switch_id role"
-    TEXT_HELP_ROLE_CREATE = "\tRole to create: role"
-    TEXT_HELP_ROLE_DELETE = "\tRole to delete: role"
-    TEXT_HELP_ROLE_REMOVE = "\tRole to remove: switch_id role"
-    URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
+    TEXT_HELP_POLICY = "\tcreate, delete (policy), assign OR remove (assignment)"
+    TEXT_HELP_POLICY_ASSIGN = "\tPolicy to assign: switch_id policy"
+    TEXT_HELP_POLICY_CREATE = "\tPolicy to create: policy"
+    TEXT_HELP_POLICY_DELETE = "\tPolicy to delete: policy"
+    TEXT_HELP_POLICY_REMOVE = "\tPolicy to remove: switch_id policy"
+    URL_ACLSWITCH_POLICY = "http://127.0.0.1:8080/acl_switch/switch_policies" # using loopback
     
     """
-    Assign interface. The user can assign or remove a role from a switch.
+    Assign interface. The user can assign or remove a policy from a switch.
     This allows the switch to block different ranges of traffic compared
     to other switches within the network.
     """
     def __init__(self):
-        print self.TEXT_HELP_ROLE
-        buf_in = raw_input(self.PROMPT_ROLE)
+        print self.TEXT_HELP_POLICY
+        buf_in = raw_input(self.PROMPT_POLICY)
         if buf_in == "create":
-            self.role_create()
+            self.policy_create()
         elif buf_in == "delete":
-            self.role_delete()
+            self.policy_delete()
         elif buf_in == "assign":
-            self.role_switch_assign()
+            self.policy_switch_assign()
         elif buf_in == "remove":
-            self.role_switch_remove()
+            self.policy_switch_remove()
         else:
-            print(self.TEXT_ERROR_SYNTAX + "\n" + self.TEXT_HELP_ROLE) # syntax error
+            print(self.TEXT_ERROR_SYNTAX + "\n" + self.TEXT_HELP_POLICY) # syntax error
     
     """
-    Create a role.
+    Create a policy.
     """
-    def role_create(self):
-        print self.TEXT_HELP_ROLE_CREATE
-        role = raw_input(self.PROMPT_ROLE_CREATE)
-        if " " in role:
-            print("Role name cannot contain space character.")
+    def policy_create(self):
+        print self.TEXT_HELP_POLICY_CREATE
+        policy = raw_input(self.PROMPT_POLICY_CREATE)
+        if " " in policy:
+            print("Policy name cannot contain space character.")
             return
-        create_req = json.dumps({"role":role})
+        create_req = json.dumps({"policy":policy})
         try:
-            resp = requests.post(self.URL_ACLSWITCH_ROLE, data=create_req,
+            resp = requests.post(self.URL_ACLSWITCH_POLICY, data=create_req,
                                  headers={"Content-type":"application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
@@ -74,17 +74,17 @@ class ACLInterfaceRole:
         print resp.text
 
     """
-    Delete a role.
+    Delete a policy.
     """
-    def role_delete(self):
-        print self.TEXT_HELP_ROLE_DELETE
-        role = raw_input(self.PROMPT_ROLE_DELETE)
-        if " " in role:
-            print("Role name cannot contain space character.")
+    def policy_delete(self):
+        print self.TEXT_HELP_POLICY_DELETE
+        policy = raw_input(self.PROMPT_POLICY_DELETE)
+        if " " in policy:
+            print("Policy name cannot contain space character.")
             return
-        delete_req = json.dumps({"role":role})
+        delete_req = json.dumps({"policy":policy})
         try:
-            resp = requests.delete(self.URL_ACLSWITCH_ROLE, data=delete_req,
+            resp = requests.delete(self.URL_ACLSWITCH_POLICY, data=delete_req,
                                    headers={"Content-type":"application/json"})
         except:
             print self.TEXT_ERROR_CONNECTION
@@ -94,11 +94,11 @@ class ACLInterfaceRole:
         print resp.text
 
     """
-    Assign a role to a switch.
+    Assign a policy to a switch.
     """
-    def role_switch_assign(self):
-        print self.TEXT_HELP_ROLE_ASSIGN
-        buf_in = raw_input(self.PROMPT_ROLE_ASSIGN)
+    def policy_switch_assign(self):
+        print self.TEXT_HELP_POLICY_ASSIGN
+        buf_in = raw_input(self.PROMPT_POLICY_ASSIGN)
         new_assign = buf_in.split(" ")
         if len(new_assign) != 2:
             print("Expect 2 arguments, " + str(len(new_assign)) + " given.")
@@ -112,9 +112,9 @@ class ACLInterfaceRole:
             print "Switch id should be a positive integer greater than 1."
             return
         assign_req = json.dumps({"switch_id":new_assign[0],
-                                 "new_role":new_assign[1]})
+                                 "new_policy":new_assign[1]})
         try:
-            resp = requests.put(self.URL_ACLSWITCH_ROLE+"/assignment",
+            resp = requests.put(self.URL_ACLSWITCH_POLICY+"/assignment",
                                 data=assign_req,
                                 headers={"Content-type":"application/json"})
         except:
@@ -125,11 +125,11 @@ class ACLInterfaceRole:
         print resp.text
 
     """
-    Remove an assigned role from a switch.
+    Remove an assigned policy from a switch.
     """
-    def role_switch_remove(self):
-        print self.TEXT_HELP_ROLE_REMOVE
-        buf_in = raw_input(self.PROMPT_ROLE_REMOVE)
+    def policy_switch_remove(self):
+        print self.TEXT_HELP_POLICY_REMOVE
+        buf_in = raw_input(self.PROMPT_POLICY_REMOVE)
         removal = buf_in.split(" ")
         if len(removal) != 2:
             print("Expect 2 arguments, " + str(len(removal)) + " given.")
@@ -143,9 +143,9 @@ class ACLInterfaceRole:
             print "Switch id should be a positive integer greater than 1."
             return
         remove_req = json.dumps({"switch_id":removal[0],
-                                 "old_role":removal[1]})
+                                 "old_policy":removal[1]})
         try:
-            resp = requests.delete(self.URL_ACLSWITCH_ROLE+"/assignment",
+            resp = requests.delete(self.URL_ACLSWITCH_POLICY+"/assignment",
                                    data=remove_req,
                                    headers = {"Content-type":"application/json"})
         except:

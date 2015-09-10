@@ -35,10 +35,10 @@ class ACLInterfaceRule:
                             "  with ACLSwitch.")
     TEXT_HELP_RULE = "\tadd, remove OR time"
     TEXT_HELP_RULE_ADD = ("\tRule to add: ip_src ip_dst transport_protocol"
-                         " port_src port_dst role")
+                         " port_src port_dst policy")
     TEXT_HELP_RULE_REMOVE = "\tRule to remove: rule_id"
     TEXT_HELP_RULE_TIME = ("\tRule to add: ip_src ip_dst transport_protocol"
-                          " port_src port_dst role time_start(e.g. 13:45)"
+                          " port_src port_dst policy time_start(e.g. 13:45)"
                           " duration(mins)")
     TIME_MAX_MINUTES = 1092
     TIME_MIN_MINUTES = 1
@@ -70,17 +70,17 @@ class ACLInterfaceRule:
     @param tp_proto - transport layer (layer 4) protocol to be encoded
     @param port_src - source port number to be encoded
     @param port_dst - destination port number to be encoded
-    @param role - role to be encoded
+    @param policy - policy to be encoded
     @return - JSON representation of the rule
     """
-    def rule_to_json(self, ip_src, ip_dst, tp_proto, port_src, port_dst, role):
+    def rule_to_json(self, ip_src, ip_dst, tp_proto, port_src, port_dst, policy):
        rule_dict = {}
        rule_dict["ip_src"] = ip_src
        rule_dict["ip_dst"] = ip_dst
        rule_dict["tp_proto"] = tp_proto
        rule_dict["port_src"] = port_src
        rule_dict["port_dst"] = port_dst
-       rule_dict["role"] = role
+       rule_dict["policy"] = policy
        return json.dumps(rule_dict)
 
     """
@@ -147,20 +147,20 @@ class ACLInterfaceRule:
     @param tp_proto - transport layer (layer 4) protocol to be encoded
     @param port_src - source port number to be encoded
     @param port_dst - destination port number to be encoded
-    @param role - role to be encoded
+    @param policy - policy to be encoded
     @param time_start - start time to be encoded
     @param time_duration - time duration to be encoded
     @return - JSON representation of the rule
     """
     def rule_time_to_json(self, ip_src, ip_dst, tp_proto, port_src,
-                          port_dst, role, time_start, time_duration):
+                          port_dst, policy, time_start, time_duration):
        rule_dict = {}
        rule_dict["ip_src"] = ip_src
        rule_dict["ip_dst"] = ip_dst
        rule_dict["tp_proto"] = tp_proto
        rule_dict["port_src"] = port_src
        rule_dict["port_dst"] = port_dst
-       rule_dict["role"] = role
+       rule_dict["policy"] = policy
        rule_dict["time_start"] = time_start
        rule_dict["time_duration"] = time_duration
        return json.dumps(rule_dict)

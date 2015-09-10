@@ -13,7 +13,7 @@
 #
 
 # Libraries
-import interface_role
+import interface_policy
 import interface_rule
 import interface_show
 import sys
@@ -24,13 +24,13 @@ class ACLInterfaceMain:
     PROMPT_MAIN = "ACL Switch > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_MAIN = "\tCommands: role, rule, show, help, quit"
+    TEXT_HELP_MAIN = "\tCommands: policy, rule, show, help, quit"
 
     def __init__(self):
         while True:
             buf_in = raw_input(self.PROMPT_MAIN)
-            if buf_in == "role":
-                interface_role.ACLInterfaceRole()
+            if buf_in == "policy":
+                interface_policy.ACLInterfacePolicy()
             elif buf_in == "rule":
                 interface_rule.ACLInterfaceRule()
             elif buf_in == "show":

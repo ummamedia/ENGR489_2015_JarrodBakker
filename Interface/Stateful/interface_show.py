@@ -8,7 +8,7 @@
 #
 # This file contains the logic for fetching and displaying state from
 # ACL. This is limited to the contents of the ACL and switches with
-# their currently assigned roles.
+# their currently assigned policies.
 #
 # Author: Jarrod N. Bakker
 #
@@ -24,16 +24,16 @@ class ACLInterfaceShow:
     PROMPT_SHOW = "ACL Switch (show) > "
     TEXT_ERROR_SYNTAX = "ERROR: Incorrect syntax, could not process given command."
     TEXT_ERROR_CONNECTION = "ERROR: Unable to establish a connection with ACLSwitch."
-    TEXT_HELP_SHOW = "\tinfo, queue, role, rule OR switch"
+    TEXT_HELP_SHOW = "\tinfo, policy, queue, rule OR switch"
     URL_ACLSWITCH_INFO = "http://127.0.0.1:8080/acl_switch" # using loopback
-    URL_ACLSWITCH_ROLE = "http://127.0.0.1:8080/acl_switch/switch_roles" # using loopback
+    URL_ACLSWITCH_POLICY = "http://127.0.0.1:8080/acl_switch/switch_policies" # using loopback
     URL_ACLSWITCH_RULE = "http://127.0.0.1:8080/acl_switch/acl_rules" # using loopback
     URL_ACLSWITCH_SWITCH = "http://127.0.0.1:8080/acl_switch/switches" # using loopback
     URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time" # using loopback
 
     """
     Show interface. The user has the option to either view the contents of the
-    ACL or view the currently connected switches and the roles associated with
+    ACL or view the currently connected switches and the policies associated with
     each one.
     """
     def __init__(self):
@@ -43,8 +43,8 @@ class ACLInterfaceShow:
             self.get_acl()
         elif buf_in == "queue":
             self.get_time_queue()
-        elif buf_in == "role":
-            self.get_role()
+        elif buf_in == "policy":
+            self.get_policy()
         elif buf_in == "switch":
             self.get_switch()
         elif buf_in == "info":
@@ -71,13 +71,13 @@ class ACLInterfaceShow:
         acl_keys = sorted(acl, key=lambda a: int(a))
         table = PrettyTable(["Rule ID", "Source Address",
                              "Destination Address", "Transport Protocol",
-                             "Source Port", "Destination Port", "Role",
+                             "Source Port", "Destination Port", "Policy",
                              "Start Time", "Duration(min)"])
         for key in acl_keys:
             rule = acl[key]
             table.add_row([rule["rule_id"], rule["ip_src"], rule["ip_dst"],
                            rule["tp_proto"], rule["port_src"],
-                           rule["port_dst"], rule["role"],
+                           rule["port_dst"], rule["policy"],
                            rule["time_start"], rule["time_duration"]])
         print table
 
@@ -102,7 +102,7 @@ class ACLInterfaceShow:
         print table
 
     """
-    Fetch information from ACLSwitch on the number of roles, the number
+    Fetch information from ACLSwitch on the number of policies, the number
     of rules, the number of switches and the current time (approximate)
     of the machine ACLSwitch is running on.
     """
@@ -118,20 +118,20 @@ class ACLInterfaceShow:
                   + " returned.")
             return
         info = resp.json()
-        table = PrettyTable(["Number of Roles","Number of Rules",
+        table = PrettyTable(["Number of Policies","Number of Rules",
                              "Number of Switches",
                              "Current ACLSwitch time (approx.)"])
-        table.add_row([info["num_roles"], info["num_rules"],
+        table.add_row([info["num_policies"], info["num_rules"],
                        info["num_switches"], info["controller_time"]])
         print table
 
     """
-    Fetch a list of the currently available roles from the ACLSwitch.
+    Fetch a list of the currently available policies from the ACLSwitch.
     """
-    def get_role(self):
-        print("Fetching role information...")
+    def get_policy(self):
+        print("Fetching policy information...")
         try:
-            resp = requests.get(self.URL_ACLSWITCH_ROLE)
+            resp = requests.get(self.URL_ACLSWITCH_POLICY)
         except:
             print self.TEXT_ERROR_CONNECTION
             return
@@ -139,14 +139,14 @@ class ACLInterfaceShow:
             print("Error fetching resource, HTTP " + str(resp.status_code)
                   + " returned.")
             return
-        roles = resp.json()
-        table = PrettyTable(["Roles"])
-        for entry in roles["Roles"]:
+        policies = resp.json()
+        table = PrettyTable(["Policies"])
+        for entry in policies["Policies"]:
             table.add_row(entry.split())
         print table
 
     """
-    Fetch a list of the current switches and the roles associated with
+    Fetch a list of the current switches and the policies associated with
     them from the ACLSwitch.
     """
     def get_switch(self):
@@ -161,7 +161,7 @@ class ACLInterfaceShow:
                   + " returned.")
             return
         switches = resp.json()
-        table = PrettyTable(["Switch Datapath ID", "Roles"])
+        table = PrettyTable(["Switch Datapath ID", "Policies"])
         for entry in switches:
             table.add_row([entry, ','.join(switches[entry])])
         print table

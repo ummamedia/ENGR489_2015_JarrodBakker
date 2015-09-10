@@ -25,7 +25,7 @@ class ACLSwitchREST(ControllerBase):
         self.acl_switch_inst = data[acl_switch_instance_name]
    
     """
-    API call to return info on ACLSwitch. The number of roles, rules,
+    API call to return info on ACLSwitch. The number of policies, rules,
     switches and the current time of the machine that ACLSwitch is
     running on are returned. This should only be taken as an
     approximation of the current time therefore the time should only
@@ -39,19 +39,19 @@ class ACLSwitchREST(ControllerBase):
         return Response(content_type="application/json", body=body)
 
     """
-    API call to show the switches and the roles associated with them.
+    API call to show the switches and the policies associated with them.
     """
     @route("acl_switch", url+"/switches", methods=["GET"])
-    def switch_role_list(self, req, **kwargs):
+    def switch_policy_list(self, req, **kwargs):
         body = json.dumps(self.acl_switch_inst.get_switches())
         return Response(content_type="application/json", body=body)
 
     """
-    API call to return a list of the currently available roles.
+    API call to return a list of the currently available policies.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["GET"])
-    def role_list(self, req, **kwargs):
-        body = json.dumps({"Roles":self.acl_switch_inst.get_role_list()})
+    @route("acl_switch", url+"/switch_policies", methods=["GET"])
+    def policy_list(self, req, **kwargs):
+        body = json.dumps({"Policies":self.acl_switch_inst.get_policy_list()})
         return Response(content_type="application/json", body=body)
     
     """
@@ -72,19 +72,19 @@ class ACLSwitchREST(ControllerBase):
         return Response(content_type="application/json", body=body)
 
     """
-    API call to create a role.
+    API call to create a policy.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["POST"])
-    def role_create(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_policies", methods=["POST"])
+    def policy_create(self, req, **kwargs):
         try:
             create_req = json.loads(req.body)
         except:
             return Response(status=400, body="Unable to parse JSON.")
         try:
-            role = create_req["role"]
+            policy = create_req["policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.role_create(role)
+        result = self.acl_switch_inst.policy_create(policy)
         if result[0] == True:
             status = 200
         else:
@@ -92,19 +92,19 @@ class ACLSwitchREST(ControllerBase):
         return Response(status=status, body=result[1])
 
     """
-    API call to delete a role from ACLSwitch.
+    API call to delete a policy from ACLSwitch.
     """
-    @route("acl_switch", url+"/switch_roles", methods=["DELETE"])
-    def role_delete(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_policies", methods=["DELETE"])
+    def policy_delete(self, req, **kwargs):
         try:
             delete_req = json.loads(req.body)
         except:
             return Response(status=400, body="Unable to parse JSON.")
         try:
-            role = delete_req["role"]
+            policy = delete_req["policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.role_delete(role)
+        result = self.acl_switch_inst.policy_delete(policy)
         if result[0] == True:
             status = 200
         else:
@@ -112,21 +112,21 @@ class ACLSwitchREST(ControllerBase):
         return Response(status=status, body=result[1])
 
     """
-    API call to assign a role to a switch.
+    API call to assign a policy to a switch.
     """
-    @route("acl_switch", url+"/switch_roles/assignment", methods=["PUT"])
-    def role_switch_assign(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_policies/assignment", methods=["PUT"])
+    def policy_switch_assign(self, req, **kwargs):
         try:
             assignReq = json.loads(req.body)
         except:
             return Response(status=400, body="Unable to parse JSON.")
         try:
             switch_id = int(assignReq["switch_id"])
-            new_role = assignReq["new_role"]
+            new_policy = assignReq["new_policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.switch_role_assign(switch_id,
-                                                         new_role)
+        result = self.acl_switch_inst.switch_policy_assign(switch_id,
+                                                         new_policy)
         if result[0] == True:
             status = 200
         else:
@@ -134,21 +134,21 @@ class ACLSwitchREST(ControllerBase):
         return Response(status=status, body=result[1])
 
     """
-    API call to remove a role assignment from a switch.
+    API call to remove a policy assignment from a switch.
     """
-    @route("acl_switch", url+"/switch_roles/assignment", methods=["DELETE"])
-    def role_switch_remove(self, req, **kwargs):
+    @route("acl_switch", url+"/switch_policies/assignment", methods=["DELETE"])
+    def policy_switch_remove(self, req, **kwargs):
         try:
             removeReq = json.loads(req.body)
         except:
             return Response(status=400, body="Unable to parse JSON.")
         try:
             switch_id = int(removeReq["switch_id"])
-            old_role = removeReq["old_role"]
+            old_policy = removeReq["old_policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.switch_role_remove(switch_id,
-                                                         old_role)
+        result = self.acl_switch_inst.switch_policy_remove(switch_id,
+                                                         old_policy)
         if result[0] == True:
             status = 200
         else:
@@ -171,7 +171,7 @@ class ACLSwitchREST(ControllerBase):
                                                     ruleReq["tp_proto"],
                                                     ruleReq["port_src"],
                                                     ruleReq["port_dst"],
-                                                    ruleReq["role"])
+                                                    ruleReq["policy"])
         if result[0] == False:
             return Response(status=400, body=result[1])
         return Response(status=200, body=result[1])
@@ -192,7 +192,7 @@ class ACLSwitchREST(ControllerBase):
                                                         ruleReq["tp_proto"],
                                                         ruleReq["port_src"],
                                                         ruleReq["port_dst"],
-                                                        ruleReq["role"],
+                                                        ruleReq["policy"],
                                                         ruleReq["time_start"],
                                                         ruleReq["time_duration"])
         if result[0] == False:
@@ -217,7 +217,7 @@ class ACLSwitchREST(ControllerBase):
 
     """
     Check that incoming JSON for an ACL has the required 6 fields:
-    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst" and "role".
+    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst" and "policy".
     
     @param ruleJSON - input from the client to check.
     @return - True if ruleJSON is valid, False otherwise.
@@ -235,13 +235,13 @@ class ACLSwitchREST(ControllerBase):
             return False
         if not "port_dst" in ruleJSON:
             return False
-        if not "role" in ruleJSON:
+        if not "policy" in ruleJSON:
             return False
         return True # everything is looking good!
 
     """
     Check that incoming JSON for an ACL has the required 6 fields:
-    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst", "role",
+    "ip_src", "ip_dst", "tp_proto", "port_src", "port_dst", "policy",
     "time_start" and "time_duration".
     
     @param ruleJSON - input from the client to check.
@@ -260,7 +260,7 @@ class ACLSwitchREST(ControllerBase):
             return False
         if not "port_dst" in ruleJSON:
             return False
-        if not "role" in ruleJSON:
+        if not "policy" in ruleJSON:
             return False
         if not "time_start" in ruleJSON:
             return False

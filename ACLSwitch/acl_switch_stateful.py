@@ -7,7 +7,7 @@
 # is extended to achieve this. Therefore a rule within the ACL
 # considers source and destination IP addresses, the transport-layer
 # protocol and source and destination ports. Different sets of rules
-# can be distributed to switches uses roles. As a result, rich policies
+# can be distributed to switches uses policies. As a result, rich policies
 # can be deployed on top of a network topology. A rule within the ACL
 # indicates a flow of traffic that should be blocked at the switches.
 #
@@ -67,7 +67,6 @@ from collections import namedtuple
 from ryu.lib import hub
 import datetime as dt
 import json
-import signal
 import sys
 
 # Global field needed for REST linkage
@@ -75,32 +74,32 @@ acl_switch_instance_name = "acl_switch_app"
 
 class ACLSwitch(app_manager.RyuApp):
     # Constants
-    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst role time_start time_duration")
+    ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst policy time_start time_duration")
         # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
     ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
         # Default priority is defined to be in the middle (0x8000 in 1.3)
         # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
-    ROLE_DEFAULT = "df"
+    POLICY_DEFAULT = "default"
     TIME_PAUSE = 1
 
     _CONTEXTS = {"wsgi":WSGIApplication}
-
-    # Fields
-    access_control_list = {} # rule_id:ACL_ENTRY # This is the master list
-    acl_id_count = 0
-    connected_switches = {} # dpip:[roles]
-    role_to_rules = {} # role:[rules]
-    rule_time_queue = [] # ordered by when a rule needs to be enforced 
-    gthread_rule_dist = None # Holds the green thread which distributes rules
 
     def __init__(self, *args, **kwargs):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         
-        # Start empty lists for the dict value
-        self.role_to_rules[self.ROLE_DEFAULT] = []
+        # Initialise fields
+        self._access_control_list = {}  # rule_id:ACL_ENTRY
+        self._acl_id_count = 0
+        self._connected_switches = {}   # dpip:[policy]
+        self._policy_to_rules = {}        # policy:[rules]
+        self._rule_time_queue = []
+        self._gthread_rule_dist = None
+
+        # Create the default polciy
+        self.policy_create(self.POLICY_DEFAULT)
 
         # Import config from file
         try:
@@ -136,25 +135,26 @@ class ACLSwitch(app_manager.RyuApp):
                 rule = config["rule"]
                 self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
                                   rule["tp_proto"], rule["port_src"],
-                                  rule["port_dst"], rule["role"])
-            elif "role" in config:
-                self.role_create(config["role"])
+                                  rule["port_dst"], rule["policy"])
+            elif "policy" in config:
+                self.policy_create(config["policy"])
             elif "rule_time" in config:
                 rule = config["rule_time"]
                 self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
                                        rule["tp_proto"], rule["port_src"],
-                                       rule["port_dst"], rule["role"],
+                                       rule["port_dst"], rule["policy"],
                                        rule["time_start"],
                                        rule["time_duration"])
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
+        buf_in.close()
    
    # Functions used for fetching information on the current state of
    # ACLSwitch.
       
     """
     Compile and return information on ACLSwitch. The information is
-    comprised of the number of roles, the number of ACL rules, the
+    comprised of the number of policies, the number of ACL rules, the
     number of switches and the current time of the machine that this
     application is running on. This should only be taken as an
     approximation of the current time therefore the time should only
@@ -163,21 +163,21 @@ class ACLSwitch(app_manager.RyuApp):
     @return - a dictionary containing information on the ACLSwitch.
     """
     def get_info(self):
-        num_roles = str(len(self.role_to_rules))
-        num_rules = str(len(self.access_control_list))
-        num_switches = str(len(self.connected_switches))
+        num_policies = str(len(self._policy_to_rules))
+        num_rules = str(len(self._access_control_list))
+        num_switches = str(len(self._connected_switches))
         controller_time = dt.datetime.now().strftime("%H:%M")
-        return {"num_roles":num_roles, "num_rules":num_rules,
+        return {"num_policies":num_policies, "num_rules":num_rules,
                 "num_switches":num_switches,
                 "controller_time":controller_time}
     
     """
-    Return a list of the currently available roles.
+    Return a list of the currently available policies.
 
-    @return - a list of the currently available roles.
+    @return - a list of the currently available policies.
     """
-    def get_role_list(self):
-        return self.role_to_rules.keys()
+    def get_policy_list(self):
+        return self._policy_to_rules.keys()
     
     """
     Return the ACL as a formatted dict.
@@ -186,25 +186,25 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def get_acl(self):
         acl_formatted = {}
-        for rule_id in self.access_control_list:
-            rule = self.access_control_list[rule_id]
+        for rule_id in self._access_control_list:
+            rule = self._access_control_list[rule_id]
             # Order the list as it's created by using rule_id
             acl_formatted[int(rule_id)] = {"rule_id":rule_id, "ip_src":rule.ip_src,
                                   "ip_dst":rule.ip_dst, "tp_proto":rule.tp_proto,
                                   "port_src":rule.port_src, "port_dst":rule.port_dst,
-                                  "role":rule.role, "time_start":rule.time_start,
+                                  "policy":rule.policy, "time_start":rule.time_start,
                                   "time_duration":rule.time_duration}
         return acl_formatted
     
     """
     Return a dict of the currently connected switches and their
-    associated roles.
+    associated policies.
     
     @return - a dict of the currently connected switches and the
-              roles associated with them.   
+              policies associated with them.   
     """
     def get_switches(self):
-        return self.connected_switches
+        return self._connected_switches
      
     """
     Return a list of the time constrained rules mapped to their
@@ -215,102 +215,102 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def get_time_queue(self):
         queue_formatted = []
-        for time_period in self.rule_time_queue:
+        for time_period in self._rule_time_queue:
             time_formatted = []
-            time = self.access_control_list[time_period[0]].time_start
+            time = self._access_control_list[time_period[0]].time_start
             time_formatted.append(time)
             time_formatted.extend(time_period)
             queue_formatted.append(time_formatted)
         return queue_formatted
 
-    # Functions handling the management of switch roles
+    # Functions handling the management of switch policies
 
     """
-    Create a role which can then be assigned to a switch.
+    Create a policy which can then be assigned to a switch.
 
-    @param new_role - the role to create.
+    @param new_policy - name of the policy to create.
     @return - result of the operation along with a message.
     """
-    def role_create(self, new_role):
-        if new_role in self.role_to_rules:
-            return (False, "Role " + new_role + " already exists.")
-        self.role_to_rules[new_role] = []
-        print("[+] New role added: " + new_role)
-        return (True, "Role " + new_role + " created.")
+    def policy_create(self, new_policy):
+        if new_policy in self._policy_to_rules:
+            return (False, "Policy " + new_policy + " already exists.")
+        self._policy_to_rules[new_policy] = []
+        print("[+] New policy added: " + new_policy)
+        return (True, "Policy " + new_policy + " created.")
 
     """
-    Delete a role. This can only be done once there are no rules
-    associated with the role.
+    Delete a policy. This can only be done once there are no rules
+    associated with the policy.
 
-    @param role - the role to delete.
+    @param policy - name of the policy to delete.
     @return - result of the operation along with a message.
     """
-    def role_delete(self, role):
-        if role == self.ROLE_DEFAULT:
-            return (False, "Role df cannot be deleted.")
-        if role not in self.role_to_rules:
-            return (False, "Role " + role + " does not exist.")
-        if self.role_to_rules[role]:
-            return (False, "Cannot delete role " + role +
+    def policy_delete(self, policy):
+        if policy == self.POLICY_DEFAULT:
+            return (False, "Policy \'default\' cannot be deleted.")
+        if policy not in self._policy_to_rules:
+            return (False, "Policy " + policy + " does not exist.")
+        if self._policy_to_rules[policy]:
+            return (False, "Cannot delete policy " + policy +
                     ", rules are still assoicated with it.")
-        for switch in self.connected_switches:
-            if role in self.connected_switches[switch]:
-                return (False, "Cannot delete role " + role +
+        for switch in self._connected_switches:
+            if policy in self._connected_switches[switch]:
+                return (False, "Cannot delete policy " + policy +
                         ", switches still have it assigned.")
-        del self.role_to_rules[role]
-        print("[+] Role deleted: " + role)
-        return (True, "Role " + role + " deleted.")
+        del self._policy_to_rules[policy]
+        print("[+] Policy deleted: " + policy)
+        return (True, "Policy " + policy + " deleted.")
 
     """
-    Assign a role to a switch then give it the appropriate rules.
+    Assign a policy to a switch then give it the appropriate rules.
 
     @param switch_id - the datapath_id of a switch, switch_id is used
                        for consistency with the API.
-    @param role - the new role to assign to a switch.
+    @param policy - the new policy to assign to a switch.
     @return - result of the operation along with a message.
     """
-    def switch_role_assign(self, switch_id, new_role):
-        if new_role not in self.role_to_rules:
-            return (False, "Role " + new_role + " does not exist.")
-        if switch_id not in self.connected_switches:
+    def switch_policy_assign(self, switch_id, new_policy):
+        if new_policy not in self._policy_to_rules:
+            return (False, "Policy " + new_policy + " does not exist.")
+        if switch_id not in self._connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
-        if new_role in self.connected_switches[switch_id]:
-            return (False, "Switch " + str(switch_id) + " already has role "
-                    + str(new_role) + ".")
-        self.connected_switches[switch_id].append(new_role)
+        if new_policy in self._connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " already has policy "
+                    + str(new_policy) + ".")
+        self._connected_switches[switch_id].append(new_policy)
         datapath = api.get_datapath(self, switch_id)
-        self.distribute_rules_role_set(datapath, new_role)
-        print("[+] Switch " + str(switch_id) + " assigned role: " + new_role)
-        return (True, "Switch " + str(switch_id) + " given role "
-                + new_role + ".")
+        self.distribute_rules_policy_set(datapath, new_policy)
+        print("[+] Switch " + str(switch_id) + " assigned policy: " + new_policy)
+        return (True, "Switch " + str(switch_id) + " given policy "
+                + new_policy + ".")
 
     """
-    Remove a role assignment from a switch then remove the respective
-    rules from the switch. Assumes that once the role has been removed
+    Remove a policy assignment from a switch then remove the respective
+    rules from the switch. Assumes that once the policy has been removed
     the respective rules will be successfully removed from the switches.
 
     @param switch_id - the datapath_id of a switch, switch_id is used
                        for consistency with the API.
-    @param old_role - the role to remove from a switch.
+    @param old_policy - the policy to remove from a switch.
     @return - result of the operation along with a message.
     """
-    def switch_role_remove(self, switch_id, old_role):
-        if old_role not in self.role_to_rules:
-            return (False, "Role " + old_role + " does not exist.")
-        if switch_id not in self.connected_switches:
+    def switch_policy_remove(self, switch_id, old_policy):
+        if old_policy not in self._policy_to_rules:
+            return (False, "policy " + old_policy + " does not exist.")
+        if switch_id not in self._connected_switches:
             return (False, "Switch " + str(switch_id) + " does not exist.")
-        if old_role not in self.connected_switches[switch_id]:
-            return (False, "Switch " + str(switch_id) + " does not have role "
-                    + str(old_role) + ".")
-        self.connected_switches[switch_id].remove(old_role)
+        if old_policy not in self._connected_switches[switch_id]:
+            return (False, "Switch " + str(switch_id) + " does not have policy "
+                    + str(old_policy) + ".")
+        self._connected_switches[switch_id].remove(old_policy)
         datapath = api.get_datapath(self, switch_id)
-        for rule_id in self.role_to_rules[old_role]:
-            rule = self.access_control_list[rule_id]
+        for rule_id in self._policy_to_rules[old_policy]:
+            rule = self._access_control_list[rule_id]
             match = self.create_match(rule)
             self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
-        print("[+] Switch " + str(switch_id) + " removed role: " + old_role)
-        return (True, "Switch " + str(switch_id) + " had role "
-                + old_role + " removed.")
+        print("[+] Switch " + str(switch_id) + " removed policy: " + old_policy)
+        return (True, "Switch " + str(switch_id) + " had policy "
+                + old_policy + " removed.")
 
     # Functions handling the use of the ACL
 
@@ -418,7 +418,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param tp_proto - the Transport Layer (layer 4) protocol to match.
     @param port_src - the Transport Layer source port to match.
     @param port_dst - the Transport Layer destination port to match.
-    @param role - the role the rule should be associated with.
+    @param policy - the policy the rule should be associated with.
     @param time_start - when the rule should start being enforced.
     @param time_duration - how long the rule should be enforced for.
     @return - a tuple indicating if the operation was a success, a message
@@ -427,22 +427,22 @@ class ACLSwitch(app_manager.RyuApp):
               and needs to be distributed among switches.
     """
     def add_acl_rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
-                     role, time_start="N/A", time_duration="N/A"):
-        if role not in self.role_to_rules:
-            return (False, "Role " + role + " was not recognised.", None)
-        rule_id = str(self.acl_id_count)
+                     policy, time_start="N/A", time_duration="N/A"):
+        if policy not in self._policy_to_rules:
+            return (False, "Policy " + policy + " was not recognised.", None)
+        rule_id = str(self._acl_id_count)
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,
-                                 port_dst=port_dst, role=role,
+                                 port_dst=port_dst, policy=policy,
                                  time_start=time_start,
                                  time_duration=time_duration)
-        for rule in self.access_control_list.values():
+        for rule in self._access_control_list.values():
             if self.compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
                         "exists.", None)
-        self.acl_id_count += 1 # need to update to keep ids unique
-        self.access_control_list[rule_id] = new_rule
-        self.role_to_rules[role].append(rule_id)
+        self._acl_id_count += 1 # need to update to keep ids unique
+        self._access_control_list[rule_id] = new_rule
+        self._policy_to_rules[policy].append(rule_id)
         if time_start != "N/A":
             self.add_to_queue(rule_id) # schedule the rule in the queue
         else:
@@ -460,19 +460,19 @@ class ACLSwitch(app_manager.RyuApp):
               message to be returned to the client.
     """
     def delete_acl_rule(self, rule_id):
-        if rule_id not in self.access_control_list:
+        if rule_id not in self._access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
-        rule = self.access_control_list[rule_id]
-        del self.access_control_list[rule_id]
-        self.role_to_rules[rule.role].remove(rule_id)
+        rule = self._access_control_list[rule_id]
+        del self._access_control_list[rule_id]
+        self._policy_to_rules[rule.policy].remove(rule_id)
         # The rule had time enforcement, it must be removed from the queue
         if rule.time_start != "N/A":
             self.remove_from_queue(rule_id)
 
         # Send off delete flow messages to switches that hold the rule
-        for switch in self.connected_switches:
-            if rule.role not in self.connected_switches[switch]:
+        for switch in self._connected_switches:
+            if rule.policy not in self._connected_switches[switch]:
                 continue
             match = self.create_match(rule)
             datapath = api.get_datapath(self, switch)
@@ -492,45 +492,48 @@ class ACLSwitch(app_manager.RyuApp):
     @param new_rule_id - ID of the rule which needs to be scheduled.
     """
     def add_to_queue(self, new_rule_id):
-        if len(self.rule_time_queue) < 1:
+        if len(self._rule_time_queue) < 1:
             # Queue is empty so just insert the rule and leave
-            self.rule_time_queue.append([new_rule_id])
+            self._rule_time_queue.append([new_rule_id])
             # Start a green thread to distribute time-based rules
-            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
-        queue_head_id = self.rule_time_queue[0][0]
-        queue_head_rule = self.access_control_list[queue_head_id]
+        queue_head_id = self._rule_time_queue[0][0]
+        queue_head_rule = self._access_control_list[queue_head_id]
         queue_head_time = dt.datetime.strptime(queue_head_rule.time_start,
                                             "%H:%M")
-        new_rule = self.access_control_list[new_rule_id]
+        new_rule = self._access_control_list[new_rule_id]
         new_rule_time = dt.datetime.strptime(new_rule.time_start, "%H:%M")
 
         # Get the current time and normalise it
         cur_time = dt.datetime.strptime(dt.datetime.now().strftime("%H:%M"),
                                      "%H:%M")
 
+        if cur_time > queue_head_time or cur_time == queue_head_time:
+            queue_head_time = queue_head_time + dt.timedelta(1)
+
         if cur_time < new_rule_time and new_rule_time < queue_head_time:
             # The new rule needs to be scheduled before the current
             # head of the queue. As a result, insert it to the front of
             # the queue, kill the current green thread and restart it.
-            self.rule_time_queue.insert(0,[new_rule_id])
-            hub.kill(self.gthread_rule_dist)
-            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            self._rule_time_queue.insert(0,[new_rule_id])
+            hub.kill(self._gthread_rule_dist)
+            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
             return
 
         # Now insert in order
-        len_queue = len(self.rule_time_queue)
+        len_queue = len(self._rule_time_queue)
         new_rule_time_store = new_rule_time
         for i in range(len_queue):
             # Reset any changes made by timedelta
             new_rule_time = new_rule_time_store
 
-            rule_i = self.access_control_list[self.rule_time_queue[i][0]]
+            rule_i = self._access_control_list[self._rule_time_queue[i][0]]
             rule_i_time = dt.datetime.strptime(rule_i.time_start, "%H:%M")
             
             if new_rule_time == rule_i_time:
-                self.rule_time_queue[i].append(new_rule_id)
+                self._rule_time_queue[i].append(new_rule_id)
                 break
             
             if new_rule_time < cur_time:
@@ -543,10 +546,10 @@ class ACLSwitch(app_manager.RyuApp):
 
             if i == (len_queue-1):
                 # Reached the end of the queue
-                self.rule_time_queue.append([new_rule_id])
+                self._rule_time_queue.append([new_rule_id])
                 break
             
-            rule_i1 = self.access_control_list[self.rule_time_queue[i+1][0]]
+            rule_i1 = self._access_control_list[self._rule_time_queue[i+1][0]]
             rule_i1_time = dt.datetime.strptime(rule_i1.time_start, "%H:%M")
             
             if rule_i1_time < rule_i_time:
@@ -555,7 +558,7 @@ class ACLSwitch(app_manager.RyuApp):
                 rule_i1_time = rule_i1_time + dt.timedelta(1)
 
             if rule_i_time < new_rule_time and new_rule_time < rule_i1_time:
-                self.rule_time_queue.insert(i+1, [new_rule_id])
+                self._rule_time_queue.insert(i+1, [new_rule_id])
                 break
     
     """
@@ -568,17 +571,17 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def remove_from_queue(self, rule_id):
         queue_head = True
-        for time_period in self.rule_time_queue:
+        for time_period in self._rule_time_queue:
             for item in time_period:
                 if item == rule_id:
                     time_period.remove(rule_id) 
                     # Was this the only rule being scheduled
                     # at rule_id's time?
                     if len(time_period) < 1:
-                        self.rule_time_queue.remove(time_period)
+                        self._rule_time_queue.remove(time_period)
                         if queue_head:
-                            hub.kill(self.gthread_rule_dist)
-                            self.gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+                            hub.kill(self._gthread_rule_dist)
+                            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
                     return
             queue_head = False
 
@@ -587,16 +590,16 @@ class ACLSwitch(app_manager.RyuApp):
     """
     Proactively distribute a newly added rule to all connected switches.
     It is necessary to check the a switch is not given a rule for which
-    it is not allowed to have. This is done by comparing roles.
+    it is not allowed to have. This is done by comparing policies.
     
     Called when a rule has been created.
     
     @param rule - the ACL rule to distributed among the switches.
     """
     def distribute_single_rule(self, rule):
-        for switch in self.connected_switches:
-            switch_roles = self.connected_switches[switch]
-            if rule.role not in switch_roles:
+        for switch in self._connected_switches:
+            switch_policies = self._connected_switches[switch]
+            if rule.policy not in switch_policies:
                 continue
             datapath = api.get_datapath(self, switch)
             priority = self.OFP_MAX_PRIORITY
@@ -606,21 +609,21 @@ class ACLSwitch(app_manager.RyuApp):
                 self.add_flow(datapath, priority, match, actions)
             else:
                 self.add_flow(datapath, priority, match, actions,
-                              time_limit=(int(rule.time_duration)*60))
+                              time_limit=(int(rule.time_duration)))
 
     """
     Proactively distribute hardcoded firewall rules to the switch
     specified using the datapath. Distribute the rules associated
-    with the role provided.
+    with the policy provided.
     
-    Called when a switch is assigned a role.
+    Called when a switch is assigned a policy.
     
     @param datapath - an OF enabled switch to communicate with
-    @param role - the role of the switch
+    @param policy - the policy of the switch
     """
-    def distribute_rules_role_set(self, datapath, role):
-        for rule_id in self.role_to_rules[role]:
-            rule = self.access_control_list[rule_id]
+    def distribute_rules_policy_set(self, datapath, policy):
+        for rule_id in self._policy_to_rules[policy]:
+            rule = self._access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
             match = self.create_match(rule)
@@ -637,11 +640,11 @@ class ACLSwitch(app_manager.RyuApp):
     def distribute_rules_time(self):
         while True:
             # Check that the queue is not empty
-            if len(self.rule_time_queue) < 1:
+            if len(self._rule_time_queue) < 1:
                 break
 
-            rule_id = self.rule_time_queue[0][0]
-            rule = self.access_control_list[rule_id]
+            rule_id = self._rule_time_queue[0][0]
+            rule = self._access_control_list[rule_id]
             time_start = rule.time_start
             # Normalise next_time
             next_scheduled = dt.datetime.strptime(time_start, "%H:%M")
@@ -657,13 +660,13 @@ class ACLSwitch(app_manager.RyuApp):
             hub.sleep(time_diff)
 
             # Check that the queue is not empty again
-            if len(self.rule_time_queue) < 1:
+            if len(self._rule_time_queue) < 1:
                 break
 
-            to_dist = self.rule_time_queue.pop(0)
-            self.rule_time_queue.append(to_dist)
+            to_dist = self._rule_time_queue.pop(0)
+            self._rule_time_queue.append(to_dist)
             
-            rule = self.access_control_list[to_dist[0]]
+            rule = self._access_control_list[to_dist[0]]
             # Check that the current time matches the time of a rule at
             # the top of the queue, if not then reschedule the alarm.
             if rule.time_start != dt.datetime.now().strftime("%H:%M"):
@@ -671,7 +674,7 @@ class ACLSwitch(app_manager.RyuApp):
             
             # Distribute the rules that need to be distributed now
             for rule_id in to_dist:
-                self.distribute_single_rule(self.access_control_list[rule_id])
+                self.distribute_single_rule(self._access_control_list[rule_id])
 
             # Pause for moment to avoid flooding the switch with flow
             # mod messages. This happens because time_diff will be
@@ -756,12 +759,12 @@ class ACLSwitch(app_manager.RyuApp):
         # The code below has been added by Jarrod N. Bakker
         # Take note of switches (via their datapaths)
         dp_id = ev.msg.datapath_id
-        self.connected_switches[dp_id] = [self.ROLE_DEFAULT]
+        self._connected_switches[dp_id] = [self.POLICY_DEFAULT]
 
         print("[?] Switch " + str(dp_id) + " connected.")
 
         # Distribute the list of rules to the switch
-        self.distribute_rules_role_set(datapath, self.ROLE_DEFAULT)
+        self.distribute_rules_policy_set(datapath, self.POLICY_DEFAULT)
 
     """
     Event handler used when a flow table entry is deleted.

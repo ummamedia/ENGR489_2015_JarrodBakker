@@ -139,8 +139,6 @@ class ACLSwitch(app_manager.RyuApp):
             elif "policy" in config:
                 self.policy_create(config["policy"])
             elif "rule_time" in config:
-                print("RULE_TIME")
-                # TODO Find out why a time rule gets dispatched immediately and is also scheduled when imported from file.
                 rule = config["rule_time"]
                 self.acl_rule_add(rule["ip_src"], rule["ip_dst"],
                                        rule["tp_proto"], rule["port_src"],
@@ -627,10 +625,11 @@ class ACLSwitch(app_manager.RyuApp):
     def _distribute_rules_policy_set(self, datapath, policy):
         for rule_id in self._policy_to_rules[policy]:
             rule = self._access_control_list[rule_id]
-            priority = self.OFP_MAX_PRIORITY
-            actions = []
-            match = self._create_match(rule)
-            self._add_flow(datapath, priority, match, actions)
+            if rule.time_start != "N/A":
+                priority = self.OFP_MAX_PRIORITY
+                actions = []
+                match = self._create_match(rule)
+                self._add_flow(datapath, priority, match, actions)
 
     """
     Distribute rules to switches when their time arises. An alarm must

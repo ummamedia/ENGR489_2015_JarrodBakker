@@ -90,7 +90,7 @@ class ACLSwitch(app_manager.RyuApp):
         super(ACLSwitch, self).__init__(*args, **kwargs)
         self.mac_to_port = {}
         
-        # Initialise fields
+        # Initialise instance variables
         self._access_control_list = {}  # rule_id:ACL_ENTRY
         self._acl_id_count = 0
         self._connected_switches = {}   # dpip:[policy]
@@ -103,7 +103,7 @@ class ACLSwitch(app_manager.RyuApp):
 
         # Import config from file
         try:
-            self.import_from_file(self.ACL_FILENAME)
+            self._import_from_file(self.ACL_FILENAME)
         except:
             print("[-] ERROR: could not read from file \'"
                   + str(self.ACL_FILENAME) + "\'\n\t"
@@ -120,7 +120,7 @@ class ACLSwitch(app_manager.RyuApp):
 
     @param filename - the input file
     """
-    def import_from_file(self, filename):
+    def _import_from_file(self, filename):
         buf_in = open(filename)
         print("[?] Reading from file \'" + str(filename) + "\'")
         for line in buf_in:
@@ -133,23 +133,26 @@ class ACLSwitch(app_manager.RyuApp):
                 continue
             if "rule" in config:
                 rule = config["rule"]
-                self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
+                self.acl_rule_add(rule["ip_src"], rule["ip_dst"],
                                   rule["tp_proto"], rule["port_src"],
                                   rule["port_dst"], rule["policy"])
             elif "policy" in config:
                 self.policy_create(config["policy"])
             elif "rule_time" in config:
+                print("RULE_TIME")
+                # TODO Find out why a time rule gets dispatched immediately and is also scheduled when imported from file.
                 rule = config["rule_time"]
-                self.add_acl_rule(rule["ip_src"], rule["ip_dst"],
+                self.acl_rule_add(rule["ip_src"], rule["ip_dst"],
                                        rule["tp_proto"], rule["port_src"],
                                        rule["port_dst"], rule["policy"],
                                        rule["time_start"],
                                        rule["time_duration"])
+
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
         buf_in.close()
    
-   # Functions used for fetching information on the current state of
+   # Methods used for fetching information on the current state of
    # ACLSwitch.
       
     """
@@ -223,7 +226,7 @@ class ACLSwitch(app_manager.RyuApp):
             queue_formatted.append(time_formatted)
         return queue_formatted
 
-    # Functions handling the management of switch policies
+    # Methods handling the management of switch policies
 
     """
     Create a policy which can then be assigned to a switch.
@@ -269,7 +272,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param policy - the new policy to assign to a switch.
     @return - result of the operation along with a message.
     """
-    def switch_policy_assign(self, switch_id, new_policy):
+    def policy_switch_assign(self, switch_id, new_policy):
         if new_policy not in self._policy_to_rules:
             return (False, "Policy " + new_policy + " does not exist.")
         if switch_id not in self._connected_switches:
@@ -279,7 +282,7 @@ class ACLSwitch(app_manager.RyuApp):
                     + str(new_policy) + ".")
         self._connected_switches[switch_id].append(new_policy)
         datapath = api.get_datapath(self, switch_id)
-        self.distribute_rules_policy_set(datapath, new_policy)
+        self._distribute_rules_policy_set(datapath, new_policy)
         print("[+] Switch " + str(switch_id) + " assigned policy: " + new_policy)
         return (True, "Switch " + str(switch_id) + " given policy "
                 + new_policy + ".")
@@ -294,7 +297,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param old_policy - the policy to remove from a switch.
     @return - result of the operation along with a message.
     """
-    def switch_policy_remove(self, switch_id, old_policy):
+    def policy_switch_remove(self, switch_id, old_policy):
         if old_policy not in self._policy_to_rules:
             return (False, "policy " + old_policy + " does not exist.")
         if switch_id not in self._connected_switches:
@@ -306,13 +309,13 @@ class ACLSwitch(app_manager.RyuApp):
         datapath = api.get_datapath(self, switch_id)
         for rule_id in self._policy_to_rules[old_policy]:
             rule = self._access_control_list[rule_id]
-            match = self.create_match(rule)
-            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+            match = self._create_match(rule)
+            self._delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
         print("[+] Switch " + str(switch_id) + " removed policy: " + old_policy)
         return (True, "Switch " + str(switch_id) + " had policy "
                 + old_policy + " removed.")
 
-    # Functions handling the use of the ACL
+    # Methods handling the use of the ACL
 
     """
     Return the IP version being used given the source and destination
@@ -322,7 +325,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param ip_dst - the destination IP address to check.
     @return - the IP version being used.
     """
-    def return_ip_version(self, ip_src, ip_dst):
+    def _return_ip_version(self, ip_src, ip_dst):
         if "*" not in ip_src:
             return IPAddress(ip_src).version
         else:
@@ -334,9 +337,9 @@ class ACLSwitch(app_manager.RyuApp):
     @param rule - the entry to create an OFPMatch instance from
     @return - the OFPMatch instance
     """
-    def create_match(self, rule):
+    def _create_match(self, rule):
         match = ofp13_parser.OFPMatch()
-        ip_version = self.return_ip_version(rule.ip_src, rule.ip_dst)
+        ip_version = self._return_ip_version(rule.ip_src, rule.ip_dst)
         # Match IP layer (layer 3)
         if ip_version == 4:
             # Match IPv4
@@ -389,7 +392,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param ip_addr - the IP address to turn into a string.
     @return - the string representation of an IP address.
     """
-    def ip_to_string(self, ip_addr):
+    def _ip_to_string(self, ip_addr):
         if ip_addr == "*":
             return ip_addr
         return str(IPAddress(ip_addr))
@@ -402,9 +405,9 @@ class ACLSwitch(app_manager.RyuApp):
     @param rule_2 - a rule to be compared.
     @return - True is equal, False otherwise.
     """
-    def compare_acl_rules(self, rule_1, rule_2):
-        return ((self.ip_to_string(rule_1.ip_src)==self.ip_to_string(rule_2.ip_src)) and
-                (self.ip_to_string(rule_1.ip_dst)==self.ip_to_string(rule_2.ip_dst)) and
+    def _compare_acl_rules(self, rule_1, rule_2):
+        return ((self._ip_to_string(rule_1.ip_src)==self._ip_to_string(rule_2.ip_src)) and
+                (self._ip_to_string(rule_1.ip_dst)==self._ip_to_string(rule_2.ip_dst)) and
                 (rule_1.tp_proto==rule_2.tp_proto) and
                 (rule_1.port_src==rule_2.port_src) and
                 (rule_1.port_dst==rule_2.port_dst))
@@ -426,7 +429,7 @@ class ACLSwitch(app_manager.RyuApp):
               is useful in the case where a single rule has been created
               and needs to be distributed among switches.
     """
-    def add_acl_rule(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
+    def acl_rule_add(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
                      policy, time_start="N/A", time_duration="N/A"):
         if policy not in self._policy_to_rules:
             return (False, "Policy " + policy + " was not recognised.", None)
@@ -437,19 +440,19 @@ class ACLSwitch(app_manager.RyuApp):
                                  time_start=time_start,
                                  time_duration=time_duration)
         for rule in self._access_control_list.values():
-            if self.compare_acl_rules(new_rule, rule):
+            if self._compare_acl_rules(new_rule, rule):
                 return (False, "New rule was not created, it already "
                         "exists.", None)
         self._acl_id_count += 1 # need to update to keep ids unique
         self._access_control_list[rule_id] = new_rule
         self._policy_to_rules[policy].append(rule_id)
         if time_start != "N/A":
-            self.add_to_queue(rule_id) # schedule the rule in the queue
+            self._add_to_queue(rule_id) # schedule the rule in the queue
         else:
-            self.distribute_single_rule(new_rule)
+            self._distribute_single_rule(new_rule)
         print("[+] Rule " + str(new_rule) + " created with id: "
               + str(rule_id))
-        return (True, "Rule was created with id: " + str(rule_id) + ".", new_rule)
+        return (True, "Rule was created with id: " + str(rule_id) + ".")
    
     """
     Remove a rule from the ACL then remove the associated flow table
@@ -459,7 +462,7 @@ class ACLSwitch(app_manager.RyuApp):
     @return - a tuple indicating if the operation was a success and a
               message to be returned to the client.
     """
-    def delete_acl_rule(self, rule_id):
+    def acl_rule_delete(self, rule_id):
         if rule_id not in self._access_control_list:
             return (False, "Invalid rule id given: " + rule_id + ".")
         # The user passed through a valid rule_id so we can proceed
@@ -468,20 +471,20 @@ class ACLSwitch(app_manager.RyuApp):
         self._policy_to_rules[rule.policy].remove(rule_id)
         # The rule had time enforcement, it must be removed from the queue
         if rule.time_start != "N/A":
-            self.remove_from_queue(rule_id)
+            self._remove_from_queue(rule_id)
 
         # Send off delete flow messages to switches that hold the rule
         for switch in self._connected_switches:
             if rule.policy not in self._connected_switches[switch]:
                 continue
-            match = self.create_match(rule)
+            match = self._create_match(rule)
             datapath = api.get_datapath(self, switch)
-            self.delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
+            self._delete_flow(datapath, self.OFP_MAX_PRIORITY, match)
         print("[+] Rule " + str(rule) + " with id: " + str(rule_id)
               + " removed.")
         return (True, "Rule with id \'" + rule_id + "\' was deleted.")
 
-    # Functions handling the adding and removal of rules to and from
+    # Methods handling the adding and removal of rules to and from
     # the queue.
     
     """
@@ -491,12 +494,12 @@ class ACLSwitch(app_manager.RyuApp):
 
     @param new_rule_id - ID of the rule which needs to be scheduled.
     """
-    def add_to_queue(self, new_rule_id):
+    def _add_to_queue(self, new_rule_id):
         if len(self._rule_time_queue) < 1:
             # Queue is empty so just insert the rule and leave
             self._rule_time_queue.append([new_rule_id])
             # Start a green thread to distribute time-based rules
-            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
             return
 
         queue_head_id = self._rule_time_queue[0][0]
@@ -519,7 +522,7 @@ class ACLSwitch(app_manager.RyuApp):
             # the queue, kill the current green thread and restart it.
             self._rule_time_queue.insert(0,[new_rule_id])
             hub.kill(self._gthread_rule_dist)
-            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+            self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
             return
 
         # Now insert in order
@@ -569,7 +572,7 @@ class ACLSwitch(app_manager.RyuApp):
     
     @param new_rule_id - ID of the rule which needs to be scheduled.
     """
-    def remove_from_queue(self, rule_id):
+    def _remove_from_queue(self, rule_id):
         queue_head = True
         for time_period in self._rule_time_queue:
             for item in time_period:
@@ -581,11 +584,11 @@ class ACLSwitch(app_manager.RyuApp):
                         self._rule_time_queue.remove(time_period)
                         if queue_head:
                             hub.kill(self._gthread_rule_dist)
-                            self._gthread_rule_dist = hub.spawn(self.distribute_rules_time)
+                            self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
                     return
             queue_head = False
 
-    # Functions handling ACL rule distribution
+    # Methods handling ACL rule distribution
 
     """
     Proactively distribute a newly added rule to all connected switches.
@@ -596,7 +599,7 @@ class ACLSwitch(app_manager.RyuApp):
     
     @param rule - the ACL rule to distributed among the switches.
     """
-    def distribute_single_rule(self, rule):
+    def _distribute_single_rule(self, rule):
         for switch in self._connected_switches:
             switch_policies = self._connected_switches[switch]
             if rule.policy not in switch_policies:
@@ -604,11 +607,11 @@ class ACLSwitch(app_manager.RyuApp):
             datapath = api.get_datapath(self, switch)
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            match = self.create_match(rule)
+            match = self._create_match(rule)
             if rule.time_duration == "N/A":
-                self.add_flow(datapath, priority, match, actions)
+                self._add_flow(datapath, priority, match, actions)
             else:
-                self.add_flow(datapath, priority, match, actions,
+                self._add_flow(datapath, priority, match, actions,
                               time_limit=(int(rule.time_duration)))
 
     """
@@ -621,13 +624,13 @@ class ACLSwitch(app_manager.RyuApp):
     @param datapath - an OF enabled switch to communicate with
     @param policy - the policy of the switch
     """
-    def distribute_rules_policy_set(self, datapath, policy):
+    def _distribute_rules_policy_set(self, datapath, policy):
         for rule_id in self._policy_to_rules[policy]:
             rule = self._access_control_list[rule_id]
             priority = self.OFP_MAX_PRIORITY
             actions = []
-            match = self.create_match(rule)
-            self.add_flow(datapath, priority, match, actions)
+            match = self._create_match(rule)
+            self._add_flow(datapath, priority, match, actions)
 
     """
     Distribute rules to switches when their time arises. An alarm must
@@ -637,7 +640,7 @@ class ACLSwitch(app_manager.RyuApp):
     The next alarm is scheduled once all other necessary operations
     have been done.
     """
-    def distribute_rules_time(self):
+    def _distribute_rules_time(self):
         while True:
             # Check that the queue is not empty
             if len(self._rule_time_queue) < 1:
@@ -656,7 +659,7 @@ class ACLSwitch(app_manager.RyuApp):
             # Compare the two times relative to the current time
             time_diff = (next_scheduled - normalised_current).seconds
             # Schedule the alarm to wait time_diff seconds
-            print("[!] WAITING " + str(time_diff) + " seconds.")
+            print("[DEBUG] WAITING " + str(time_diff) + " seconds.")
             hub.sleep(time_diff)
 
             # Check that the queue is not empty again
@@ -674,7 +677,7 @@ class ACLSwitch(app_manager.RyuApp):
             
             # Distribute the rules that need to be distributed now
             for rule_id in to_dist:
-                self.distribute_single_rule(self._access_control_list[rule_id])
+                self._distribute_single_rule(self._access_control_list[rule_id])
 
             # Pause for moment to avoid flooding the switch with flow
             # mod messages. This happens because time_diff will be
@@ -682,7 +685,7 @@ class ACLSwitch(app_manager.RyuApp):
             # until a second passes.
             hub.sleep(self.TIME_PAUSE)
 
-    # Functions handling OpenFlow flow table entries
+    # Methods handling OpenFlow flow table entries
     
     """
     Delete a flow table entry from a switch. OFPFC_DELETE_STRICT is used
@@ -692,7 +695,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param priority - priority of the rule to remove.
     @param match - the flow table entry to remove.
     """
-    def delete_flow(self, datapath, priority, match):
+    def _delete_flow(self, datapath, priority, match):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         command = ofproto.OFPFC_DELETE_STRICT
@@ -713,7 +716,7 @@ class ACLSwitch(app_manager.RyuApp):
     @param buffer_id - identifier of buffer queue if traffic is being
                        buffered.
     """
-    def add_flow(self, datapath, priority, match, actions, buffer_id=None, time_limit=0):
+    def _add_flow(self, datapath, priority, match, actions, buffer_id=None, time_limit=0):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
@@ -733,13 +736,13 @@ class ACLSwitch(app_manager.RyuApp):
                                     instructions=inst)
         datapath.send_msg(mod)
 
-    # Functions handling OpenFlow events
+    # Methods handling OpenFlow events
     
     """
     Event handler used when a switch connects to the controller.
     """
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
+    def _switch_features_handler(self, ev):
         datapath = ev.msg.datapath
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
@@ -754,7 +757,7 @@ class ACLSwitch(app_manager.RyuApp):
         match = parser.OFPMatch()
         actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
                                           ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
+        self._add_flow(datapath, 0, match, actions)
 
         # The code below has been added by Jarrod N. Bakker
         # Take note of switches (via their datapaths)
@@ -764,13 +767,13 @@ class ACLSwitch(app_manager.RyuApp):
         print("[?] Switch " + str(dp_id) + " connected.")
 
         # Distribute the list of rules to the switch
-        self.distribute_rules_policy_set(datapath, self.POLICY_DEFAULT)
+        self._distribute_rules_policy_set(datapath, self.POLICY_DEFAULT)
 
     """
     Event handler used when a flow table entry is deleted.
     """
     @set_ev_cls(ofp_event.EventOFPFlowRemoved)
-    def rule_deletion_handler(self, ev):
+    def _flow_removed_handler(self, ev):
         msg = ev.msg
         match = msg.match
         print("[?] Flow table entry removed.\n\t Flow match: "
@@ -824,10 +827,10 @@ class ACLSwitch(app_manager.RyuApp):
             # verify if we have a valid buffer_id, if yes avoid to send both
             # flow_mod & packet_out
             if msg.buffer_id != ofproto.OFP_NO_BUFFER:
-                self.add_flow(datapath, priority, match, actions, msg.buffer_id)
+                self._add_flow(datapath, priority, match, actions, msg.buffer_id)
                 return
             else:
-                self.add_flow(datapath, priority, match, actions)
+                self._add_flow(datapath, priority, match, actions)
 
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:

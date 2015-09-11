@@ -14,7 +14,7 @@ from ryu.app.wsgi import route
 from webob import Response
 import json
 
-# Global field needed for REST linkage
+# Global fields needed for REST linkage
 acl_switch_instance_name = "acl_switch_app"
 url = "/acl_switch"
 
@@ -23,6 +23,8 @@ class ACLSwitchREST(ControllerBase):
     def __init__(self, req, link, data, **config):
         super(ACLSwitchREST, self).__init__(req, link, data, **config)
         self.acl_switch_inst = data[acl_switch_instance_name]
+   
+    # Methods for fetching information 
    
     """
     API call to return info on ACLSwitch. The number of policies, rules,
@@ -33,7 +35,7 @@ class ACLSwitchREST(ControllerBase):
 
     """
     @route("acl_switch", url, methods=["GET"])
-    def return_aclswitch_info(self, req, **kwargs):
+    def get_info(self, req, **kwargs):
         aclswitch_info = self.acl_switch_inst.get_info()
         body = json.dumps(aclswitch_info)
         return Response(content_type="application/json", body=body)
@@ -42,7 +44,7 @@ class ACLSwitchREST(ControllerBase):
     API call to show the switches and the policies associated with them.
     """
     @route("acl_switch", url+"/switches", methods=["GET"])
-    def switch_policy_list(self, req, **kwargs):
+    def get_switch_list(self, req, **kwargs):
         body = json.dumps(self.acl_switch_inst.get_switches())
         return Response(content_type="application/json", body=body)
 
@@ -50,7 +52,7 @@ class ACLSwitchREST(ControllerBase):
     API call to return a list of the currently available policies.
     """
     @route("acl_switch", url+"/switch_policies", methods=["GET"])
-    def policy_list(self, req, **kwargs):
+    def get_policy_list(self, req, **kwargs):
         body = json.dumps({"Policies":self.acl_switch_inst.get_policy_list()})
         return Response(content_type="application/json", body=body)
     
@@ -58,7 +60,7 @@ class ACLSwitchREST(ControllerBase):
     API call to return the current contents of the ACL.
     """
     @route("acl_switch", url+"/acl_rules", methods=["GET"])
-    def acl_list(self, req, **kwargs):
+    def get_acl(self, req, **kwargs):
         acl = self.acl_switch_inst.get_acl()
         body = json.dumps(acl)
         return Response(content_type="application/json", body=body)
@@ -67,9 +69,11 @@ class ACLSwitchREST(ControllerBase):
     API call to return a list representing the queue of scheduled 
     """
     @route("acl_switch", url+"/acl_rules/time", methods=["GET"])
-    def time_queue_list(self, req, **kwargs):
+    def get_time_queue(self, req, **kwargs):
         body = json.dumps(self.acl_switch_inst.get_time_queue())
         return Response(content_type="application/json", body=body)
+
+    # Methods dealing with policy management
 
     """
     API call to create a policy.
@@ -125,7 +129,7 @@ class ACLSwitchREST(ControllerBase):
             new_policy = assignReq["new_policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.switch_policy_assign(switch_id,
+        result = self.acl_switch_inst.policy_switch_assign(switch_id,
                                                          new_policy)
         if result[0] == True:
             status = 200
@@ -147,13 +151,15 @@ class ACLSwitchREST(ControllerBase):
             old_policy = removeReq["old_policy"]
         except:
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.switch_policy_remove(switch_id,
+        result = self.acl_switch_inst.policy_switch_remove(switch_id,
                                                          old_policy)
         if result[0] == True:
             status = 200
         else:
             status = 400
         return Response(status=status, body=result[1])
+
+    # Methods dealing with rule management with the ACL
 
     """
     API call to add a rule to the ACL.
@@ -166,12 +172,12 @@ class ACLSwitchREST(ControllerBase):
             return Response(status=400, body="Unable to parse JSON.")
         if not self.check_rule_json(ruleReq):
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.add_acl_rule(ruleReq["ip_src"],
-                                                    ruleReq["ip_dst"],
-                                                    ruleReq["tp_proto"],
-                                                    ruleReq["port_src"],
-                                                    ruleReq["port_dst"],
-                                                    ruleReq["policy"])
+        result = self.acl_switch_inst.acl_rule_add(ruleReq["ip_src"],
+                                                   ruleReq["ip_dst"],
+                                                   ruleReq["tp_proto"],
+                                                   ruleReq["port_src"],
+                                                   ruleReq["port_dst"],
+                                                   ruleReq["policy"])
         if result[0] == False:
             return Response(status=400, body=result[1])
         return Response(status=200, body=result[1])
@@ -187,14 +193,14 @@ class ACLSwitchREST(ControllerBase):
             return Response(status=400, body="Unable to parse JSON.")
         if not self.check_rule_time_json(ruleReq):
             return Response(status=400, body="Invalid JSON passed.")
-        result = self.acl_switch_inst.add_acl_rule(ruleReq["ip_src"],
-                                                        ruleReq["ip_dst"],
-                                                        ruleReq["tp_proto"],
-                                                        ruleReq["port_src"],
-                                                        ruleReq["port_dst"],
-                                                        ruleReq["policy"],
-                                                        ruleReq["time_start"],
-                                                        ruleReq["time_duration"])
+        result = self.acl_switch_inst.acl_rule_add(ruleReq["ip_src"],
+                                                   ruleReq["ip_dst"],
+                                                   ruleReq["tp_proto"],
+                                                   ruleReq["port_src"],
+                                                   ruleReq["port_dst"],
+                                                   ruleReq["policy"],
+                                                   ruleReq["time_start"],
+                                                   ruleReq["time_duration"])
         if result[0] == False:
             return Response(status=400, body=result[1])
         return Response(status=200, body=result[1])
@@ -208,7 +214,7 @@ class ACLSwitchREST(ControllerBase):
             deleteReq = json.loads(req.body)
         except:
             return Response(status=400, body="Unable to parse JSON.")
-        result = self.acl_switch_inst.delete_acl_rule(deleteReq["rule_id"])
+        result = self.acl_switch_inst.acl_rule_delete(deleteReq["rule_id"])
         if result[0] == True:
             status = 200
         else:

@@ -76,13 +76,18 @@ class ACLSwitch(app_manager.RyuApp):
     # Constants
     ACL_ENTRY = namedtuple("ACL_ENTRY", "ip_src ip_dst tp_proto port_src port_dst policy time_start time_duration")
         # Contains the connection 5-tuple and the OFPMatch instance for OF 1.3
-    ACL_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
+    CONFIG_FILENAME = "ryu/ENGR489_2015_JarrodBakker/ACLSwitch/config.json"
+
     OFP_VERSIONS = [ofproto_v1_3.OFP_VERSION]
     OFP_MAX_PRIORITY = ofproto_v1_3.OFP_DEFAULT_PRIORITY*2 - 1
         # Default priority is defined to be in the middle (0x8000 in 1.3)
         # Note that for a priority p, 0 <= p <= MAX (i.e. 65535)
     POLICY_DEFAULT = "default"
-    TIME_PAUSE = 1
+
+    TABLE_ID_ACL = 0
+    TABLE_ID_L2 = 1
+
+    TIME_PAUSE = 1 # In seconds
 
     _CONTEXTS = {"wsgi":WSGIApplication}
 
@@ -103,10 +108,10 @@ class ACLSwitch(app_manager.RyuApp):
 
         # Import config from file
         try:
-            self._import_from_file(self.ACL_FILENAME)
+            self._import_from_file(self.CONFIG_FILENAME)
         except:
             print("[-] ERROR: could not read from file \'"
-                  + str(self.ACL_FILENAME) + "\'\n\t"
+                  + str(self.CONFIG_FILENAME) + "\'\n\t"
                   + str(sys.exc_info()))
         
         # Create an object for the REST interface
@@ -145,7 +150,6 @@ class ACLSwitch(app_manager.RyuApp):
                                        rule["port_dst"], rule["policy"],
                                        rule["time_start"],
                                        rule["time_duration"])
-
             else:
                 print("[-] Line: " + line + "is not recognised JSON.")
         buf_in.close()
@@ -607,10 +611,12 @@ class ACLSwitch(app_manager.RyuApp):
             actions = []
             match = self._create_match(rule)
             if rule.time_duration == "N/A":
-                self._add_flow(datapath, priority, match, actions)
+                self._add_flow(datapath, priority, match, actions,
+                               table_id=self.TABLE_ID_ACL)
             else:
                 self._add_flow(datapath, priority, match, actions,
-                              time_limit=(int(rule.time_duration)))
+                              time_limit=(int(rule.time_duration)),
+                              table_id=self.TABLE_ID_ACL)
 
     """
     Proactively distribute hardcoded firewall rules to the switch
@@ -625,11 +631,12 @@ class ACLSwitch(app_manager.RyuApp):
     def _distribute_rules_policy_set(self, datapath, policy):
         for rule_id in self._policy_to_rules[policy]:
             rule = self._access_control_list[rule_id]
-            if rule.time_start != "N/A":
+            if rule.time_start == "N/A":
                 priority = self.OFP_MAX_PRIORITY
                 actions = []
                 match = self._create_match(rule)
-                self._add_flow(datapath, priority, match, actions)
+                self._add_flow(datapath, priority, match, actions,
+                               table_id=self.TABLE_ID_ACL)
 
     """
     Distribute rules to switches when their time arises. An alarm must
@@ -715,24 +722,29 @@ class ACLSwitch(app_manager.RyuApp):
     @param buffer_id - identifier of buffer queue if traffic is being
                        buffered.
     """
-    def _add_flow(self, datapath, priority, match, actions, buffer_id=None, time_limit=0):
+    def _add_flow(self, datapath, priority, match, actions,
+                  buffer_id=None, time_limit=0, table_id=1):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
-        inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
+        if (actions == None):
+            # catch the moment where the flow tables are being linked up
+            inst = [parser.OFPInstructionGotoTable(self.TABLE_ID_L2)]
+        else:
+            inst = [parser.OFPInstructionActions(ofproto.OFPIT_APPLY_ACTIONS,
                                              actions)]
         if buffer_id:
             mod = parser.OFPFlowMod(datapath=datapath, buffer_id=buffer_id,
                                     hard_timeout=time_limit,
                                     priority=priority, match=match,
                                     flags=ofproto.OFPFF_SEND_FLOW_REM,
-                                    instructions=inst)
+                                    instructions=inst, table_id=table_id)
         else:
             mod = parser.OFPFlowMod(datapath=datapath,
                                     hard_timeout=time_limit,
                                     priority=priority, match=match,
                                     flags=ofproto.OFPFF_SEND_FLOW_REM,
-                                    instructions=inst)
+                                    instructions=inst, table_id=table_id)
         datapath.send_msg(mod)
 
     # Methods handling OpenFlow events
@@ -746,7 +758,15 @@ class ACLSwitch(app_manager.RyuApp):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
 
-        # install table-miss flow entry
+        # Install table-miss flow entry for the ACL flow table. No
+        # buffer is used for this table-miss entry as matching flows
+        # get passed onto the L2 switching flow table.
+        match = parser.OFPMatch()
+        actions = None # no action required for forwarding to another table
+        self._add_flow(datapath, 0, match, actions,
+                       table_id=self.TABLE_ID_ACL)
+
+        # Install table-miss flow entry for the L2 switching flow table.
         #
         # We specify NO BUFFER to max_len of the output action due to
         # OVS bug. At this moment, if we specify a lesser number, e.g.,

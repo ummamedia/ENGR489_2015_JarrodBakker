@@ -96,7 +96,7 @@ class ACLInterfaceShow:
                   + " returned.")
             return
         queue = resp.json()
-        table = PrettyTable(["Start Time", "Rule IDs"])
+        table = PrettyTable(["Start Time", "Rule ID"])
         for entry in queue:
             table.add_row([entry[0], ','.join(entry[1:])])
         print table

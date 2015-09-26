@@ -109,10 +109,12 @@ class ACLSwitch(app_manager.RyuApp):
         # Import config from file
         try:
             self._import_from_file(self.CONFIG_FILENAME)
+            print("[!] Config loaded.")
         except:
             print("[-] ERROR: could not read from file \'"
-                  + str(self.CONFIG_FILENAME) + "\'\n\t"
-                  + str(sys.exc_info()))
+                  + str(self.CONFIG_FILENAME) + "\':\t"
+                  + str(sys.exc_info()[1][1]))
+            print("[!] No config loaded.")
         
         # Create an object for the REST interface
         wsgi = kwargs['wsgi']

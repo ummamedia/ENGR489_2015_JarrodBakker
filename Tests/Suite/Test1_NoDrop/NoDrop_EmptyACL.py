@@ -1,20 +1,22 @@
 #
-# Test #: Test details here. 
+# Test: Verify that traffic can follow through the network when there
+#       are no rules in the ACL.
 #
-# Usage: python test#_.py <number of hosts in the network>
+# Usage: python NoDrop_EmptyACL.py <number of hosts in the network>
 #
-# Test success: 
-# Test failure: 
+# Test success: All traffic receives some form of response (dependent 
+#               on protocol).
+# Test failure: At least one flow does not received an answer.
 #
 # Note:
-#   - Test output can be found in test_results.log
+#   - Test output can be found in NoDrop_EmptyACL_results.log
 #
 #   - Scapy is used for packet manipulation.
 #
 #   - The script assumes that the host is part of the 10.0.0.0/24
 #     subnet.
 #
-#   - The script assumes that the syntax for the REST commands is
+#   - The script assumes that the syntax for the REST commands are
 #     legal.
 #
 # Author: Jarrod N. Bakker

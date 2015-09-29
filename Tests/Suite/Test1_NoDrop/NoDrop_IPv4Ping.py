@@ -1,7 +1,7 @@
 #
 # Test: Verify that IPv4 ping requests can be answered when there are
 #       rules blocking OTHER flows of traffic. This is to prove that
-#       rule have no unintended side-effects. The ACL rules can be
+#       rules have no unintended side-effects. The ACL rules can be
 #       found in NoDrop_IPv4Ping_rules.json
 #
 # Usage: python NoDrop_IPv4Ping.py <number of hosts in the network>

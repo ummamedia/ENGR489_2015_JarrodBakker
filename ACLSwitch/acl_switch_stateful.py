@@ -67,6 +67,7 @@ from collections import namedtuple
 from ryu.lib import hub
 import datetime as dt
 import json
+import rule_syntax
 import sys
 
 # Global field needed for REST linkage
@@ -112,8 +113,7 @@ class ACLSwitch(app_manager.RyuApp):
             print("[!] Config loaded.")
         except:
             print("[-] ERROR: could not read from file \'"
-                  + str(self.CONFIG_FILENAME) + "\':\t"
-                  + str(sys.exc_info()[1][1]))
+                  + str(self.CONFIG_FILENAME))
             print("[!] No config loaded.")
         
         # Create an object for the REST interface
@@ -417,6 +417,28 @@ class ACLSwitch(app_manager.RyuApp):
                 (rule_1.port_dst==rule_2.port_dst))
 
     """
+    Perform a syntax check off ACL rule.
+
+    @param ip_src - the source IP address to match.
+    @param ip_dst - the destination IP address to match.
+    @param tp_proto - the Transport Layer (layer 4) protocol to match.
+    @param port_src - the Transport Layer source port to match.
+    @param port_dst - the Transport Layer destination port to match.
+    @return - a tuple indicating if the operation was a success and a
+              message to be returned to the client.
+    """
+    def _acl_rule_syntax_check(self, ip_src, ip_dst, tp_proto,
+                              port_src, port_dst):
+        errors = rule_syntax.check_rule(ip_src, ip_dst, tp_proto,
+                                       port_src, port_dst)
+        error_msg = "Provided rule has invalid syntax:"
+        if len(errors) != 0:
+            for e in errors:
+                error_msg = error_msg + "\n\t" + e
+            return (False, error_msg)
+        return (True, "Rule syntax is valid.")
+
+    """
     Add a rule to the ACL by creating an entry then appending it to the
     list. 
     
@@ -435,8 +457,16 @@ class ACLSwitch(app_manager.RyuApp):
     """
     def acl_rule_add(self, ip_src, ip_dst, tp_proto, port_src, port_dst,
                      policy, time_start="N/A", time_duration="N/A"):
+        syntax_results = self._acl_rule_syntax_check(ip_src, ip_dst, 
+                                                     tp_proto, port_src,
+                                                     port_dst)
+        if not syntax_results[0]:
+            print("[-] " + syntax_results[1])
+            return (False, syntax_results[1], None)
+
         if policy not in self._policy_to_rules:
             return (False, "Policy " + policy + " was not recognised.", None)
+
         rule_id = str(self._acl_id_count)
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
                                  tp_proto=tp_proto, port_src=port_src,

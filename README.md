@@ -37,7 +37,7 @@ Check Ryu version:
 Check Open vSwitch version:
     $ ovs-vswitchd --version
 
-##List of Python modules that need to installed onto the VM
+##List of Python modules that need to be installed onto the VM
 - prettytable
 - Scapy
 - netifaces

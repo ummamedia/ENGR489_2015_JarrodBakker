@@ -2,9 +2,9 @@
 # Test: Verify that packets with a UDP header get blocked when they
 #       originate from host 1. Care must be taken that this test is
 #       run on host 1 with an IPv4 address of 10.0.0.1. The ACL rules
-#       can be found in DropH1_IPv4UDP_rules.json
+#       can be found in DropAllH1_IPv4UDP_rules.json
 #
-# Usage: python DropH1_IPv4UDP.py <number of hosts in the network>
+# Usage: python DropAllH1_IPv4UDP.py <number of hosts in the network>
 #
 # Test success: All traffic receives some form of response (dependent 
 #               on protocol).

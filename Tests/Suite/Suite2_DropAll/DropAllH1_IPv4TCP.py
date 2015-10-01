@@ -2,9 +2,9 @@
 # Test: Verify that packets with a TCP header get blocked when they
 #       originate from host 1. Care must be taken that this test is
 #       run on host 1 with an IPv4 address of 10.0.0.1. The rules
-#       can be found in DropH1_IPv4TCP_rules.json
+#       can be found in DropAllH1_IPv4TCP_rules.json
 #
-# Usage: python DropH1_IPv4TCP.py <number of hosts in the network>
+# Usage: python DropAllH1_IPv4TCP.py <number of hosts in the network>
 #
 # Test success: All traffic receives some form of response (dependent 
 #               on protocol).

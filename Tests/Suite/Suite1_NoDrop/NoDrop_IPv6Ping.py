@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that IPv6 ping requests can be answered when there are
 #       rules blocking OTHER flows of traffic. This is to prove that

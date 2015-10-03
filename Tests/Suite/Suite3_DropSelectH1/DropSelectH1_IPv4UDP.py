@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that select packets with a UDP header get blocked when
 #       they originate from host 1. Care must be taken that this test
@@ -30,17 +32,31 @@ import json
 import logging
 import netifaces as ni
 import os
+import random
 import requests
 import sys
 
 FILENAME_LOG_RESULTS = None
 NETWORK_IPV4 = "10.0.0."
-PORT_NUM_DST = [14,16,20,21,22,23,80,123,8080,9001]
-PORT_NUM_SRC = [4001,4002,4003,4004,4005,5011,5012,5013,5014]
+
+PORT_NUM_DST1 = [1000,1001,1002,1003,1004]
+PORT_NUM_SRC1 = [1000,10000,2000,20000]
+
+PORT_NUM_DST2 = [20,21,22,23,80,123,194,6633,8080,8333]
+
+PORT_NUM_SRC3 = [3000,3001,3002,3003,3004,3005,3006,3007,3008,3009]
+
 TEST_SCRIPT_ARGS = "<number of hosts in the network>"
 TEST_NAME = None
 TIMEOUT = 1
 TIME_SLEEP = 1
+
+"""
+ Generate a random port number between 32768 and 61000.
+ @return - a port number.
+"""
+def generate_port_num():
+    return random.randint(32768, 61000)
 
 """
  Fetch and return the IPv4 address of THIS host from interface h#_eth0
@@ -85,6 +101,7 @@ def neighbour_ipv4(host_ip, num_host):
 def send_udp(ip4_dst, port_src, port_dst):
     resp = sr(IP(dst=ip4_dst)/UDP(sport=port_src,dport=port_dst),
               timeout=TIMEOUT)
+                  # we should never get here!
     # UDP needs space and time on the receiving host to process requests
     # when we flood them. So we're going to sleep for a wee bit.
     sleep(TIME_SLEEP)
@@ -113,8 +130,8 @@ def test(num_hosts):
 
     # IPv4 UDP
     for n in neighbours_ipv4:
-        for src in PORT_NUM_SRC:
-            for dst in PORT_NUM_DST:
+        for src in PORT_NUM_SRC1:
+            for dst in PORT_NUM_DST1:
                 logging.info("\t{0} --UDP(src:{1},dst:{2})--> {3}"
                              .format(host_ip4,src,dst,n)) 
                 print("\t{0} --UDP(src:{1},dst:{2})--> {3}"
@@ -123,6 +140,30 @@ def test(num_hosts):
                     failed.append("\tFAILED: {0} --UDP(src:{1},dst:{2})--> {3}"
                                   .format(host_ip4,src,dst,n))
                 test_count += 1
+
+    for n in neighbours_ipv4:
+        for dst in PORT_NUM_DST2:
+            src = generate_port_num()
+            logging.info("\t{0} --UDP(src:{1} (random seeded),dst:{1})--> {2}"
+                         .format(host_ip4,src,dst,n)) 
+            print("\t{0} --UDP(src:{1} (random seeded),dst:{1})--> {2}"
+                  .format(host_ip4,src,dst,n))
+            if send_udp(n, src, dst):
+                failed.append("\tFAILED: {0} --UDP(src:{1} (random seeded),dst:{1})--> {2}"
+                              .format(host_ip4,src,dst,n))
+            test_count += 1
+
+    for n in neighbours_ipv4:
+        for src in PORT_NUM_SRC3:
+            dst = generate_port_num()
+            logging.info("\t{0} --UDP(src:{1},dst:{2} (random seeded))--> {2}"
+                         .format(host_ip4,src,dst,n)) 
+            print("\t{0} --UDP(src:{1},dst:{2} (random seeded))--> {2}"
+                  .format(host_ip4,src,dst,n))
+            if send_udp(n, src, dst):
+                failed.append("\tFAILED: {0} --UDP(src:{1},dst:{2} (random seeded))--> {2}"
+                              .format(host_ip4,src,dst,n))
+            test_count += 1
 
     # See if anything failed
     if len(failed) != 0:
@@ -141,6 +182,8 @@ def test(num_hosts):
 if __name__ == "__main__":
     TEST_NAME = os.path.basename(__file__)
     FILENAME_LOG_RESULTS = TEST_NAME[:-3] + "_results.log"
+    
+    random.seed(999)
     
     # Check command-line arguments
     if len(sys.argv) != 2:

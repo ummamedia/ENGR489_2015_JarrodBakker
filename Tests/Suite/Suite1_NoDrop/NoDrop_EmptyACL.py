@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that traffic can follow through the network when there
 #       are no rules in the ACL.

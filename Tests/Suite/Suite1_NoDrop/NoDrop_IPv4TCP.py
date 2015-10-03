@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that packets with a TCP header can pass through where
 #       there are rules blocking OTHER flows of traffic. This is to

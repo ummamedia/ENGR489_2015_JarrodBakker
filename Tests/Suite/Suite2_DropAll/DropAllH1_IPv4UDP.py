@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that packets with a UDP header get blocked when they
 #       originate from host 1. Care must be taken that this test is

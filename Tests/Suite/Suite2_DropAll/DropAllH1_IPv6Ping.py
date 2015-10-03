@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that IPv6 traffic gets blocked when it originates from
 #       host 1. As TCP and UDP packets do not receive replies were on

@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Verify that no traffic can flow through the network when it
 #       originates from host 1. Care must be taken that this test is

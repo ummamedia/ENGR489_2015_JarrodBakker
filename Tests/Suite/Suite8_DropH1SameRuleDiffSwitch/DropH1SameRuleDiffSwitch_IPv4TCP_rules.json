@@ -16,48 +16,48 @@
 #   {"rule_time":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":"", "time_start":"", "time_duration":""}}
 #
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1000", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1001", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1002", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1003", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1004", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1000", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1001", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1002", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1003", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1004", "port_dst":"1000", "policy":"default"}}
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"10000", "port_dst":"1000", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"10000", "port_dst":"1001", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"10000", "port_dst":"1002", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"10000", "port_dst":"1003", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"10000", "port_dst":"1004", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1000", "port_dst":"10000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1001", "port_dst":"10000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1002", "port_dst":"10000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1003", "port_dst":"10000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1004", "port_dst":"10000", "policy":"default"}}
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"2000", "port_dst":"1000", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"2000", "port_dst":"1001", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"2000", "port_dst":"1002", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"2000", "port_dst":"1003", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"2000", "port_dst":"1004", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1000", "port_dst":"2000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1001", "port_dst":"2000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1002", "port_dst":"2000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1003", "port_dst":"2000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1004", "port_dst":"2000", "policy":"default"}}
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"20000", "port_dst":"1000", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"20000", "port_dst":"1001", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"20000", "port_dst":"1002", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"20000", "port_dst":"1003", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"20000", "port_dst":"1004", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1000", "port_dst":"20000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1001", "port_dst":"20000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1002", "port_dst":"20000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1003", "port_dst":"20000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"1004", "port_dst":"20000", "policy":"default"}}
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"20", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"21", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"22", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"23", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"80", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"123", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"194", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"6633", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"8080", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"*", "port_dst":"8333", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"20", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"21", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"22", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"23", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"80", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"123", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"194", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"6633", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"8080", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"8333", "port_dst":"*", "policy":"default"}}
 
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3000", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3001", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3002", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3003", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3004", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3005", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3006", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3007", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3008", "port_dst":"*", "policy":"default"}}
-{"rule":{"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"tcp", "port_src":"3009", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3000", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3001", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3002", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3003", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3004", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3005", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3006", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3007", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3008", "policy":"default"}}
+{"rule":{"ip_src":"*", "ip_dst":"10.0.0.1", "tp_proto":"tcp", "port_src":"*", "port_dst":"3009", "policy":"default"}}

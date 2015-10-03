@@ -1,0 +1,63 @@
+#
+# ACL rules for acl_switch
+#
+# This file is used to specify policies and rules. The information is
+# loaded on application start up.
+#
+# Note that policies should be provided first if they are needed.
+#
+# To specify a policy use:
+#   {"policy":"<policy name here>"}
+#
+# To specify a rule use:
+#   {"rule":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":""}}
+#
+# To specify a rule with time enforcement (where "time_duration is in seconds"):
+#   {"rule_time":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":"", "time_start":"", "time_duration":""}}
+#
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"1000", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"1000", "port_dst":"1001", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"1000", "port_dst":"1002", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"1000", "port_dst":"1003", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"1000", "port_dst":"1004", "policy":"default"}}
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"10000", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"10000", "port_dst":"1001", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"10000", "port_dst":"1002", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"10000", "port_dst":"1003", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"10000", "port_dst":"1004", "policy":"default"}}
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"2000", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"2000", "port_dst":"1001", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"2000", "port_dst":"1002", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"2000", "port_dst":"1003", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"2000", "port_dst":"1004", "policy":"default"}}
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"20000", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"20000", "port_dst":"1001", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"20000", "port_dst":"1002", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"20000", "port_dst":"1003", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"20000", "port_dst":"1004", "policy":"default"}}
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"20", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"21", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"22", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"23", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"80", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"123", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"194", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"6633", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"8080", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"*", "port_dst":"8333", "policy":"default"}}
+
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3000", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3001", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3002", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3003", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3004", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3005", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3006", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3007", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3008", "port_dst":"*", "policy":"default"}}
+{"rule":{"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"udp", "port_src":"3009", "port_dst":"*", "policy":"default"}}

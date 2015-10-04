@@ -1,0 +1,39 @@
+#
+# ACL rules for acl_switch
+#
+# This file is used to specify policies and rules. The information is
+# loaded on application start up.
+#
+# Note that policies should be provided first if they are needed.
+#
+# To specify a policy use:
+#   {"policy":"<policy name here>"}
+#
+# To specify a rule use:
+#   {"rule":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":""}}
+#
+# To specify a rule with time enforcement (where "time_duration is in seconds"):
+#   {"rule_time":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":"", "time_start":"", "time_duration":""}}
+#
+
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"1000", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"1001", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"1002", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"1003", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"1004", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"2000", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"2001", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"2002", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"2003", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"2004", "policy":"default"}}
+
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"20", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"21", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"22", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"23", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"80", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"123", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"194", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"6633", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"8080", "policy":"default"}}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"fe80::200:ff:fe00:2", "tp_proto":"tcp", "port_src":"*", "port_dst":"8333", "policy":"default"}}

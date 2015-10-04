@@ -2,14 +2,12 @@
 
 #
 # Test: Verify that IPv6 traffic gets blocked when it originates from
-#       host 1. As TCP and UDP packets do not receive replies were on
-#       top of IPv6 and sent using Scapy, ICMPv6 Echo Requests will be
-#       used to test the lack of connectivity. Care must be taken that
+#       host 1 and is destined for host 2. Care must be taken that
 #       this test is run on host 1 with an IPv6 address of
 #       fe80::200:ff:fe00:1. The ACL rules can be found in 
-#       DropSelectH1_IPv6TCP_destPort_rules.json
+#       DropSelectTwoHost_IPv6TCP_destPort_rules.json
 #
-# Usage: python DropSelectH1_IPv6TCP_destPort.py <number of hosts in the network>
+# Usage: python DropSelectTwoHost_IPv6TCP_destPort.py <number of hosts in the network>
 #
 # Test success: All traffic receives some form of response (dependent 
 #               on protocol).

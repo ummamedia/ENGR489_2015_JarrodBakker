@@ -7,9 +7,9 @@
 #       used to test the lack of connectivity. Care must be taken that
 #       this test is run on host 1 with an IPv6 address of
 #       fe80::200:ff:fe00:1. The ACL rules can be found in 
-#       DropAllH1_IPv6All_rules.json
+#       DropSelectH1_IPv6TCP_destPort_rules.json
 #
-# Usage: python DropAllH1_IPv6All.py <number of hosts in the network>
+# Usage: python DropSelectH1_IPv6TCP_destPort.py <number of hosts in the network>
 #
 # Test success: All traffic receives some form of response (dependent 
 #               on protocol).

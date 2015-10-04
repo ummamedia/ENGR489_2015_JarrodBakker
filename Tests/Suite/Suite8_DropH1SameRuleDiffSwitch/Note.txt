@@ -1,0 +1,4 @@
+Did not UDP as the nature of the test requires filtering of h1's
+destination IP address. As a port scan reply for a closed port is
+ICMP, we cannot filter traffic using h1's IP and the port number of
+UDP connection.

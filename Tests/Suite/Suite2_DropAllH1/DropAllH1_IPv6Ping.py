@@ -7,16 +7,16 @@
 #       used to test the lack of connectivity. Care must be taken that
 #       this test is run on host 1 with an IPv6 address of
 #       fe80::200:ff:fe00:1. The ACL rules can be found in 
-#       DropAllH1_IPv6All_rules.json
+#       DropAllH1_IPv6Ping_rules.json
 #
-# Usage: python DropAllH1_IPv6All.py <number of hosts in the network>
+# Usage: python DropAllH1_IPv6Ping.py <number of hosts in the network>
 #
 # Test success: All traffic receives some form of response (dependent 
 #               on protocol).
 # Test failure: At least one flow does not received an answer.
 #
 # Note:
-#   - Test output can be found in NoDrop_EmptyACL_results.log
+#   - Test output can be found in DropAllH1_IPv6Ping_results.log
 #
 #   - Scapy is used for packet manipulation.
 #

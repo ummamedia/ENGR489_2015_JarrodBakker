@@ -16,7 +16,7 @@
 # Test failure: At least one flow does not received an answer.
 #
 # Note:
-#   - Test output can be found in NoDrop_EmptyACL_results.log
+#   - Test output can be found in DropSelectH1_IPv6TCP_destPort_results.log
 #
 #   - To perform a port scan of TCP destination ports, Paramiko was used.
 #     It is a SSH module for Python.

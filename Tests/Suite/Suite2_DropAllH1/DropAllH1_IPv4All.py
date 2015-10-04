@@ -13,7 +13,7 @@
 # Test failure: At least one flow does not received an answer.
 #
 # Note:
-#   - Test output can be found in NoDrop_EmptyACL_results.log
+#   - Test output can be found in DropAllH1_IPv4All_results.log
 #
 #   - Scapy is used for packet manipulation.
 #

@@ -1,0 +1,12 @@
+Test Instructions
+=================
+
+1. Copy step1_RuleRemovalH1_IPv4TCP_rules.json file into the config.json
+   file for ACLSwitch and execute runStatefulFirewall.sh from within the
+   ENGR489_2015_JarrodBakker directory.
+2. Start Mininet using step2_startNetwork.sh.
+3. Verify that h1 can communicate with all hosts using step3_RuleRemovalH1_IPv4TCP.py 3.
+4. Add a rule to s1 using step4_RuleRemovalH1_AddRules.sh.
+5. Verify that h1 can't communicate with any hosts using step5_RuleRemovalH1_IPv4TCP.py 3.
+6. Remove the assigned policy using step6_RuleRemovalH1_RemoveRules.sh
+7. Verify that h1 can communicate with all hosts using step7_RuleRemovalH1_IPv4TCP.py 3.

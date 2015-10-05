@@ -43,7 +43,6 @@ def add_time_rules(rules):
             resp = requests.post(URL_ACLSWITCH_TIME, data=add_req,
                                  headers = {"Content-type": "application/json"})
         except:
-            print TEXT_ERROR_CONNECTION
             print("[!] FATAL ERROR: Unable to connect with ACLSwitch, exiting test.") 
             sys.exit(1)
         if resp.status_code != 200:
@@ -60,7 +59,6 @@ def get_time_queue():
     try:
         resp = requests.get(URL_ACLSWITCH_TIME)
     except:
-        print TEXT_ERROR_CONNECTION
         print("[!] FATAL ERROR: Unable to connect with ACLSwitch, exiting test.") 
         sys.exit(1)
     if resp.status_code != 200:
@@ -119,11 +117,11 @@ def test():
           " has finished.")
     logging.info("Beginning test \'"+TEST_NAME+"\'") # test name here
 
-    #logging.info("\t") # use for general information and test passed
-    #logging.warning("\t") # use when something goes wrong e.g. test failed
-
     cur_time = dt.datetime.strptime(dt.datetime.now().strftime("%H:%M"),
                                     "%H:%M")
+    
+    logging.info("\tCurrent time: " + str(cur_time))
+    print("\tCurrent time: " + str(cur_time))
 
     rules = []
     i = 0

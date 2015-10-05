@@ -560,30 +560,6 @@ class ACLSwitch(app_manager.RyuApp):
             self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
             return
 
-        # If the current head of the queue is to be dispatched tomorrow
-        # then add a weighting of a day to reflect that.
-        #if cur_time >= queue_head_time:
-        #    queue_head_time = queue_head_time + dt.timedelta(0.5)
-
-        #if new_rule_time < queue_head_time and cur_time >= queue_head_time:
-        #if cur_time < new_rule_time and new_rule_time < queue_head_time:
-            # The new rule needs to be scheduled before the current
-            # head of the queue. As a result, insert it to the front of
-            # the queue, kill the current green thread and restart it.
-        #    self._rule_time_queue.insert(0,[new_rule_id])
-        #    hub.kill(self._gthread_rule_dist)
-        #    self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
-        #    return
-        
-        #if new_rule_time < queue_head_time:
-            # The new rule needs to be scheduled before the current
-            # head of the queue. As a result, insert it to the front of
-            # the queue, kill the current green thread and restart it.
-        #    self._rule_time_queue.insert(0,[new_rule_id])
-        #    hub.kill(self._gthread_rule_dist)
-        #    self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
-        #    return
-
         # Now insert in order
         len_queue = len(self._rule_time_queue)
         new_rule_time_store = new_rule_time

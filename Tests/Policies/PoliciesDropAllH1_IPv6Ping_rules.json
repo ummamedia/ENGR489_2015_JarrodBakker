@@ -1,0 +1,20 @@
+#
+# ACL rules for acl_switch
+#
+# This file is used to specify policies and rules. The information is
+# loaded on application start up.
+#
+# Note that policies should be provided first if they are needed.
+#
+# To specify a policy use:
+#   {"policy":"<policy name here>"}
+#
+# To specify a rule use:
+#   {"rule":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":""}}
+#
+# To specify a rule with time enforcement (where "time_duration is in seconds"):
+#   {"rule_time":{"ip_src":"", "ip_dst":"", "tp_proto":"", "port_src":"", "port_dst":"", "policy":"", "time_start":"", "time_duration":""}}
+#
+
+{"policy":"Policy-SW1"}
+{"rule":{"ip_src":"fe80::200:ff:fe00:1", "ip_dst":"*", "tp_proto":"*", "port_src":"*", "port_dst":"*", "policy":"Policy-SW1"}}

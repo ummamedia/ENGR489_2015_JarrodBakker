@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Schedule rules around either side of the current time with no
 #       particular order. This doesn't mean randomly though. 

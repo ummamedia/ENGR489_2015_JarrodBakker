@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Schedule rules before the current time (i.e. for tomorrow) in
 #       no particular order.

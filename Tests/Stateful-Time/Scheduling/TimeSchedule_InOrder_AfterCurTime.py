@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Schedule rules after the current time and in order.
 #

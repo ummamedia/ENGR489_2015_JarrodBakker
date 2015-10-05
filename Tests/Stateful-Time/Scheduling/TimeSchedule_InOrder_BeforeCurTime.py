@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #
 # Test: Insert rules before the current time (i.e. for tomorrow) in
 #       reverse order.

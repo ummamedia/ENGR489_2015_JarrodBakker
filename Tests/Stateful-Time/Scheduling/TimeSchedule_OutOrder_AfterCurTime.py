@@ -120,8 +120,8 @@ def test():
     cur_time = dt.datetime.strptime(dt.datetime.now().strftime("%H:%M"),
                                     "%H:%M")
 
-    logging.info("\tCurrent time: " + str(cur_time))
-    print("\tCurrent time: " + str(cur_time))
+    logging.info("\tCurrent time: " + str(cur_time.strftime("%H:%M")))
+    print("\tCurrent time: " + str(cur_time.strftime("%H:%M")))
 
     rules = []
     i = 0

@@ -41,7 +41,7 @@ FILENAME_LOG_RESULTS = None
 NETWORK_IPV4 = "10.0.0."
 TEST_NAME = None
 TIMEOUT = 1
-TIME_SLEEP = 12
+TIME_SLEEP = 60
 
 """
  Fetch and return the IPv4 address of THIS host from interface h#_eth0
@@ -120,7 +120,7 @@ def test(num_hosts):
     sec_left = 60 - cur_sec
 
     # Wait
-    sleep(sec_left)
+    sleep(sec_left+20)
 
     # Check that h1 can't contact h2
     logging.info("\th1 should not be able to contact h2")

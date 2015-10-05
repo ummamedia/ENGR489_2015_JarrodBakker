@@ -35,7 +35,7 @@ def test():
     sec_left = 60 - cur_sec
     rule = ({"ip_src":"10.0.0.1", "ip_dst":"*", "tp_proto":"*",
           "port_src":"*", "port_dst":"*", "policy":"default",
-          "time_start":"", "time_duration":"10"})
+          "time_start":"", "time_duration":"60"})
     time = cur_time + dt.timedelta(0,sec_left) 
     rule["time_start"] = time.strftime("%H:%M")
     

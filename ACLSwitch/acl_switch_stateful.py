@@ -465,7 +465,8 @@ class ACLSwitch(app_manager.RyuApp):
             return (False, syntax_results[1], None)
 
         if policy not in self._policy_to_rules:
-            return (False, "Policy " + policy + " was not recognised.", None)
+            print ("[-] Policy \'" + policy + "\' was not recognised.")
+            return (False, "Policy \'" + policy + "\' was not recognised.", None)
 
         rule_id = str(self._acl_id_count)
         new_rule = self.ACL_ENTRY(ip_src=ip_src, ip_dst=ip_dst,
@@ -547,17 +548,41 @@ class ACLSwitch(app_manager.RyuApp):
         cur_time = dt.datetime.strptime(dt.datetime.now().strftime("%H:%M"),
                                      "%H:%M")
 
-        if cur_time > queue_head_time or cur_time == queue_head_time:
-            queue_head_time = queue_head_time + dt.timedelta(1)
-
-        if cur_time < new_rule_time and new_rule_time < queue_head_time:
-            # The new rule needs to be scheduled before the current
-            # head of the queue. As a result, insert it to the front of
-            # the queue, kill the current green thread and restart it.
+        # Check if the queue head needs to be pre-empted
+        if ((cur_time < queue_head_time and new_rule_time < queue_head_time 
+             and new_rule_time  > cur_time) or
+            (cur_time > queue_head_time and cur_time < new_rule_time and
+             new_rule_time > cur_time) or
+            (new_rule_time < queue_head_time and cur_time > new_rule_time and
+             queue_head_time < cur_time)):
             self._rule_time_queue.insert(0,[new_rule_id])
             hub.kill(self._gthread_rule_dist)
             self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
             return
+
+        # If the current head of the queue is to be dispatched tomorrow
+        # then add a weighting of a day to reflect that.
+        #if cur_time >= queue_head_time:
+        #    queue_head_time = queue_head_time + dt.timedelta(0.5)
+
+        #if new_rule_time < queue_head_time and cur_time >= queue_head_time:
+        #if cur_time < new_rule_time and new_rule_time < queue_head_time:
+            # The new rule needs to be scheduled before the current
+            # head of the queue. As a result, insert it to the front of
+            # the queue, kill the current green thread and restart it.
+        #    self._rule_time_queue.insert(0,[new_rule_id])
+        #    hub.kill(self._gthread_rule_dist)
+        #    self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
+        #    return
+        
+        #if new_rule_time < queue_head_time:
+            # The new rule needs to be scheduled before the current
+            # head of the queue. As a result, insert it to the front of
+            # the queue, kill the current green thread and restart it.
+        #    self._rule_time_queue.insert(0,[new_rule_id])
+        #    hub.kill(self._gthread_rule_dist)
+        #    self._gthread_rule_dist = hub.spawn(self._distribute_rules_time)
+        #    return
 
         # Now insert in order
         len_queue = len(self._rule_time_queue)
@@ -572,20 +597,24 @@ class ACLSwitch(app_manager.RyuApp):
             if new_rule_time == rule_i_time:
                 self._rule_time_queue[i].append(new_rule_id)
                 break
-            
-            if new_rule_time < cur_time:
+
+            if i == (len_queue-1):
+                # Reached the end of the queue
+                self._rule_time_queue.append([new_rule_id])
+                break
+
+            if new_rule_time < cur_time and rule_i_time > new_rule_time:
             # The new rule has a 'smaller' time value than the current
             # time but its time for scheduling has already passed. This
             # means that the rule should be scheduled for tomorrow. To
             # correct the comparisons we'll add a day onto the datetime
             # value.
                 new_rule_time = new_rule_time + dt.timedelta(1)
-
-            if i == (len_queue-1):
-                # Reached the end of the queue
-                self._rule_time_queue.append([new_rule_id])
+                        
+            if i == 0 and new_rule_time < rule_i_time:
+                self._rule_time_queue.insert(0,[new_rule_id])
                 break
-            
+
             rule_i1 = self._access_control_list[self._rule_time_queue[i+1][0]]
             rule_i1_time = dt.datetime.strptime(rule_i1.time_start, "%H:%M")
             

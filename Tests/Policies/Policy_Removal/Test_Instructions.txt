@@ -5,8 +5,8 @@ Test Instructions
    file for ACLSwitch and execute runStatefulFirewall.sh from within the
    ENGR489_2015_JarrodBakker directory.
 2. Start Mininet using step2_startNetworkSmallTree.sh.
-3. Verify that h1 can communicate with all hosts using step3_PolicyRemovalH1_IPv4.py 4.
+3. Verify that h1 can communicate with all hosts using step3_PolicyRemovalH1_IPv4All.py 4.
 4. Assign the policy to s1 using step4_PolicyRemovalH1_Assign_Policy-SW1.sh.
-5. Verify that h1 can only communicate with h2 using step5_PolicyRemovalH1_IPv4.py 4.
+5. Verify that h1 can only communicate with h2 using step5_PolicyRemovalH1_IPv4All.py 4.
 6. Remove the assigned policy using step6_PolicyRemovalH1_Remove_Policy-SW1.sh
-7. Verify that h1 can communicate with all hosts using step7_PolicyRemovalH1_IPv4.py 4.
+7. Verify that h1 can communicate with all hosts using step7_PolicyRemovalH1_IPv4All.py 4.

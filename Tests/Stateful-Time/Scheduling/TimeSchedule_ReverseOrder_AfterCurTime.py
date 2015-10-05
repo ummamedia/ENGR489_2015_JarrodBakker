@@ -1,13 +1,13 @@
 #
-# Test: Schedule rules after the current time and in order.
+# Test: Schedule rules after the current time in reverse order.
 #
-# Usage: python TimeSchedule_InOrder_AfterCurTime.py
+# Usage: python TimeSchedule_ReverseOrder_AfterCurTime.py
 #
 # Test success: Scheduled rules appear in the correct order.
 # Test failure: Scheduled rules are not in the correct order.
 #
 # Note:
-#   - Test output can be found in TimeSchedule_InOrder_AfterCurTime_results.log
+#   - Test output can be found in TimeSchedule_ReverseOrder_AfterCurTime_results.log
 #
 #   - The script assumes that the syntax for the REST commands are
 #     legal.
@@ -26,7 +26,7 @@ import sys
 
 FILENAME_LOG_RESULTS = None
 TEST_NAME = None
-TIMES = ["+5","+10","+20","+30","+35","+40","+80","+100","+110","+1000"]
+TIMES = ["+1000","+110","+100","+80","+40","+35","+30","+20","+10","+5"]
 URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time"  
 
 

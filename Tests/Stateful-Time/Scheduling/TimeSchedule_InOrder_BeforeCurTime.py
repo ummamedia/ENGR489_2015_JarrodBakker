@@ -1,9 +1,6 @@
 #
-# Test: InsertDescription of the test's purpose here with other details.
-#       This template contains a variety of functions to perform
-#       certain tasks, such as: send an ICMP echo request to a
-#       particular host or send a TCP header with the SYN flag set to
-#       a particular host on a given port.
+# Test: Insert rules before the current time (i.e. for tomorrow) in
+#       reverse order.
 #
 # Usage: python TimeSchedule_InOrder_BeforeCurTime.py
 #
@@ -30,7 +27,7 @@ import sys
 
 FILENAME_LOG_RESULTS = None
 TEST_NAME = None
-TIMES = ["-5","-10","-20","-30","-35","-40","-80","-100","-110","-1000"]
+TIMES = ["-1000","-110","-100","-80","-40","-35","-30","-20","-10","-5"]
 URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time"  
 
 
@@ -136,7 +133,7 @@ def test():
         r = ({"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"tcp",
               "port_src":"80", "port_dst":"", "policy":"default",
               "time_start":"", "time_duration":"60"})
-        time = cur_time + dt.timedelta(0,0,0,0,eval(t)) 
+        time = cur_time + dt.timedelta(1,0,0,0,eval(t)) 
         r["time_start"] = time.strftime("%H:%M")
         r["port_dst"] = str(i)
         entry = {"rule":r,"t":t}

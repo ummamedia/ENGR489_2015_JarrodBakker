@@ -5,19 +5,13 @@
 #       particular host or send a TCP header with the SYN flag set to
 #       a particular host on a given port.
 #
-# Usage: python test_name.py <number of hosts in the network>
+# Usage: python test_name.py
 #
-# Test success: All traffic receives some form of response (dependent 
-#               on protocol).
-# Test failure: At least one flow does not received an answer.
+# Test success: Scheduled rules appear in the correct order.
+# Test failure: Scheduled rules are not in the correct order.
 #
 # Note:
-#   - Test output can be found in NoDrop_EmptyACL_results.log
-#
-#   - Scapy is used for packet manipulation.
-#
-#   - The script assumes that the host is part of the 10.0.0.0/24
-#     subnet.
+#   - Test output can be found in test_name_results.log
 #
 #   - The script assumes that the syntax for the REST commands are
 #     legal.
@@ -36,8 +30,6 @@ import sys
 
 FILENAME_LOG_RESULTS = None
 TEST_NAME = None
-#TIMES = ([("+20",1),("+30",2),("+40",4),("+50",5),("+35",3),("-40",8),
-#         ("+80",6),("-100",7),("-10",9)])
 TIMES = ["+20","+30","+40","+50","+35","-40","+80","-100","-10"]
 URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time"  
 
@@ -48,9 +40,9 @@ URL_ACLSWITCH_TIME = "http://127.0.0.1:8080/acl_switch/acl_rules/time"
  @param rules - the rules to send.
 """
 def add_time_rules(rules):
+    print("Adding rules...")
     for r in rules:
         add_req = json.dumps(r["rule"])
-        print add_req
         try:
             resp = requests.post(URL_ACLSWITCH_TIME, data=add_req,
                                  headers = {"Content-type": "application/json"})
@@ -107,14 +99,20 @@ def determine_expected_order(rules):
 
 """
  Determine whether or not the received queue is in the order
- that we expect.
+ that we expect. A rule's destination port is used as its
+ id.
 
  @param expected - list of rules in the expected order.
  @param received - list of rules in ACLSwitch's order
  @return - True if in order, False otherwise.
 """
 def in_order(expected, received):
-    pass
+    list_size = len(expected)
+    i = 0
+    for i in range(list_size):
+        if expected[i]["rule"]["port_dst"] != received[i][1]:
+            return False
+    return True
 
 """
  Summary of the test here.
@@ -138,7 +136,7 @@ def test():
         r = ({"ip_src":"10.0.0.1", "ip_dst":"10.0.0.2", "tp_proto":"tcp",
               "port_src":"80", "port_dst":"", "policy":"default",
               "time_start":"", "time_duration":"60"})
-        time = cur_time + dt.timedelta(0,0,0,0,eval(t)) 
+        time = cur_time + dt.timedelta(1,0,0,0,eval(t)) 
         r["time_start"] = time.strftime("%H:%M")
         r["port_dst"] = str(i)
         entry = {"rule":r,"t":t}
@@ -150,27 +148,34 @@ def test():
 
     # Read back the queue of scheduled rules
     queue = get_time_queue()
-    print("[?] ACLSwitch rule schedule")
+    logging.info("\tACLSwitch rule schedule")
+    print("\tACLSwitch rule schedule")
     table = PrettyTable(["Rule ID", "Rule Time"])
     for entry in queue:
         table.add_row([','.join(entry[1:]), entry[0]])
+    logging.info(table)
     print table
 
     # Sort the list of rules that were just sent and determine what
     # order they should be in.
     sorted_list = determine_expected_order(rules)
     # A rule's ID is based off of it's destination port in this case
-    print("[?] Expected rule schedule")
+    logging.info("\tExpected rule schedule")
+    print("\tExpected rule schedule")
     table = PrettyTable(["Rule ID", "Rule Time"])
     for entry in sorted_list:
         table.add_row([entry["rule"]["port_dst"],entry["rule"]["time_start"]])
+    logging.info(table)
     print table
 
 
     # Are they the same?
     if in_order(sorted_list,queue):
-        print "YES"
-
+        logging.info("\tTEST PASSED: Rules are scheduled in the correct order.")    
+        print("\tTEST PASSED: Rules are scheduled in the correct order.")    
+    else:
+        logging.warning("\tTEST FAILED: Rules were not scheduled in the correct order.")    
+        print("\tTEST FAILED: Rules were not scheduled in the correct order.")    
 
 
     logging.info("Test \'"+TEST_NAME+"\' complete.")

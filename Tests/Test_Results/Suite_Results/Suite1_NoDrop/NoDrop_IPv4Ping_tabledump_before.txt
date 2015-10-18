@@ -1,0 +1,29 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.1 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.2 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.2 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.3 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.3 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.4 actions=drop
+ cookie=0x0, duration=4.449s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.4 actions=drop
+ cookie=0x0, duration=4.447s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.5 actions=drop
+ cookie=0x0, duration=4.445s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.5 actions=drop
+ cookie=0x0, duration=4.443s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.6 actions=drop
+ cookie=0x0, duration=4.443s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_src=10.0.0.6 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.2 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.2 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.3 actions=drop
+ cookie=0x0, duration=4.452s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.3 actions=drop
+ cookie=0x0, duration=4.450s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.4 actions=drop
+ cookie=0x0, duration=4.447s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.4 actions=drop
+ cookie=0x0, duration=4.445s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.5 actions=drop
+ cookie=0x0, duration=4.443s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.5 actions=drop
+ cookie=0x0, duration=4.443s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_dst=10.0.0.6 actions=drop
+ cookie=0x0, duration=4.443s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.6 actions=drop
+ cookie=0x0, duration=4.453s, table=0, n_packets=3, n_bytes=210, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=4.453s, table=1, n_packets=3, n_bytes=210, send_flow_rem priority=0 actions=CONTROLLER:65535

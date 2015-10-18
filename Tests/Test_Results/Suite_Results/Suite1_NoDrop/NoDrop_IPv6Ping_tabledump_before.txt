@@ -1,0 +1,29 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=5.409s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=5.397s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:2 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:2 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:3 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:3 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:4 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:4 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:5 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:5 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_src=fe80::200:ff:fe00:6 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_src=fe80::200:ff:fe00:6 actions=drop
+ cookie=0x0, duration=5.405s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=5.396s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:2 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:2 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:3 actions=drop
+ cookie=0x0, duration=5.393s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:3 actions=drop
+ cookie=0x0, duration=5.377s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:4 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:4 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:5 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:5 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp6,ipv6_dst=fe80::200:ff:fe00:6 actions=drop
+ cookie=0x0, duration=5.374s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp6,ipv6_dst=fe80::200:ff:fe00:6 actions=drop
+ cookie=0x0, duration=5.411s, table=0, n_packets=14, n_bytes=1148, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=5.409s, table=1, n_packets=14, n_bytes=1148, send_flow_rem priority=0 actions=CONTROLLER:65535

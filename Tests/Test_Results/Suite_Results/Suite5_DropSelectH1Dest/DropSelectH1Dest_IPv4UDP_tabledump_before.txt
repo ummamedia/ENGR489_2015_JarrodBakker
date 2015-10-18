@@ -1,0 +1,149 @@
+Note that rules were originally different. Due to the lessons learnt regarding port numbers in the TCP
+equivalent of this test, the src and dst port numbers were switched.
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=3.264s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.256s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.256s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.256s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=10000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=10000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=10000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=10000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=10000 actions=drop
+ cookie=0x0, duration=3.255s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=2000 actions=drop
+ cookie=0x0, duration=3.246s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=2000 actions=drop
+ cookie=0x0, duration=3.246s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=2000 actions=drop
+ cookie=0x0, duration=3.234s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=2000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=2000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=20000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=20000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=20000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=20000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=20000 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=21 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=22 actions=drop
+ cookie=0x0, duration=3.228s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=23 actions=drop
+ cookie=0x0, duration=3.227s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=80 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=123 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=194 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=6633 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=8080 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=8333 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3000 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3001 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3002 actions=drop
+ cookie=0x0, duration=3.225s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3003 actions=drop
+ cookie=0x0, duration=3.225s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3004 actions=drop
+ cookie=0x0, duration=3.225s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3005 actions=drop
+ cookie=0x0, duration=3.225s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3006 actions=drop
+ cookie=0x0, duration=3.223s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3007 actions=drop
+ cookie=0x0, duration=3.222s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3008 actions=drop
+ cookie=0x0, duration=3.222s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3009 actions=drop
+ cookie=0x0, duration=3.302s, table=0, n_packets=13, n_bytes=1086, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=3.300s, table=1, n_packets=13, n_bytes=1086, send_flow_rem priority=0 actions=CONTROLLER:65535
+ 
+ 
+Second attempt (running on two host network from h2):
+
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=1000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=1000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=1000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=1000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=10000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=10000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=10000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=10000 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=10000 actions=drop
+ cookie=0x0, duration=4.515s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=2000 actions=drop
+ cookie=0x0, duration=4.506s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=2000 actions=drop
+ cookie=0x0, duration=4.506s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=2000 actions=drop
+ cookie=0x0, duration=4.498s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=2000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=2000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=20000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1001,tp_dst=20000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1002,tp_dst=20000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1003,tp_dst=20000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1004,tp_dst=20000 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20 actions=drop
+ cookie=0x0, duration=4.497s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=21 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=22 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=23 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=80 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=123 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=194 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=6633 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=8080 actions=drop
+ cookie=0x0, duration=4.496s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=8333 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3000 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3001 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3002 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3003 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3004 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3005 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3006 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3007 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3008 actions=drop
+ cookie=0x0, duration=4.492s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=3009 actions=drop
+ cookie=0x0, duration=4.516s, table=0, n_packets=10, n_bytes=836, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=4.516s, table=1, n_packets=10, n_bytes=836, send_flow_rem priority=0 actions=CONTROLLER:65535
+ 
+ 
+Third attempt (running on two host network from h2). Switched the ports back again so that
+it matches what is being sent back:
+
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=3.269s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.259s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=3.259s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=3.259s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=3.259s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=1000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=3.259s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=10000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.261s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=10000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=3.261s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=10000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=3.261s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=10000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=3.261s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=10000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=3.261s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=2000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.260s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=2000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=3.260s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=2000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=3.251s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=2000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=3.248s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=2000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=3.248s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=3.248s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=3.248s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=3.247s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=3.247s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=20000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=3.247s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=20 actions=drop
+ cookie=0x0, duration=3.247s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=21 actions=drop
+ cookie=0x0, duration=3.246s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=22 actions=drop
+ cookie=0x0, duration=3.246s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=23 actions=drop
+ cookie=0x0, duration=3.246s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=80 actions=drop
+ cookie=0x0, duration=3.241s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=123 actions=drop
+ cookie=0x0, duration=3.241s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=194 actions=drop
+ cookie=0x0, duration=3.241s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=6633 actions=drop
+ cookie=0x0, duration=3.241s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=8080 actions=drop
+ cookie=0x0, duration=3.241s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_dst=8333 actions=drop
+ cookie=0x0, duration=3.231s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3000 actions=drop
+ cookie=0x0, duration=3.229s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3001 actions=drop
+ cookie=0x0, duration=3.226s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3002 actions=drop
+ cookie=0x0, duration=3.225s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3003 actions=drop
+ cookie=0x0, duration=3.217s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3004 actions=drop
+ cookie=0x0, duration=3.215s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3005 actions=drop
+ cookie=0x0, duration=3.215s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3006 actions=drop
+ cookie=0x0, duration=3.216s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3007 actions=drop
+ cookie=0x0, duration=3.216s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3008 actions=drop
+ cookie=0x0, duration=3.216s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1,tp_src=3009 actions=drop
+ cookie=0x0, duration=3.274s, table=0, n_packets=9, n_bytes=758, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=3.273s, table=1, n_packets=9, n_bytes=758, send_flow_rem priority=0 actions=CONTROLLER:65535

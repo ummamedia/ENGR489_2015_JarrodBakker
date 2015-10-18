@@ -1,0 +1,45 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=1.624s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=1000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=1.624s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=1000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=1000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=1000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=1000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=10000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=10000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=10000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=10000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=10000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=2000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=2000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=2000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=2000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=1.623s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=2000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=1.617s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=20000,tp_dst=1000 actions=drop
+ cookie=0x0, duration=1.607s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=20000,tp_dst=1001 actions=drop
+ cookie=0x0, duration=1.598s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=20000,tp_dst=1002 actions=drop
+ cookie=0x0, duration=1.598s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=20000,tp_dst=1003 actions=drop
+ cookie=0x0, duration=1.597s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=20000,tp_dst=1004 actions=drop
+ cookie=0x0, duration=1.597s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=20 actions=drop
+ cookie=0x0, duration=1.596s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=21 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=22 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=23 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=80 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=123 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=194 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=6633 actions=drop
+ cookie=0x0, duration=1.595s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=8080 actions=drop
+ cookie=0x0, duration=1.594s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_dst=8333 actions=drop
+ cookie=0x0, duration=1.594s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3000 actions=drop
+ cookie=0x0, duration=1.594s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3001 actions=drop
+ cookie=0x0, duration=1.590s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3002 actions=drop
+ cookie=0x0, duration=1.590s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3003 actions=drop
+ cookie=0x0, duration=1.590s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3004 actions=drop
+ cookie=0x0, duration=1.589s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3005 actions=drop
+ cookie=0x0, duration=1.586s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3006 actions=drop
+ cookie=0x0, duration=1.583s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3007 actions=drop
+ cookie=0x0, duration=1.583s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3008 actions=drop
+ cookie=0x0, duration=1.583s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,tp_src=3009 actions=drop
+ cookie=0x0, duration=1.679s, table=0, n_packets=7, n_bytes=578, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=1.624s, table=1, n_packets=7, n_bytes=578, send_flow_rem priority=0 actions=CONTROLLER:65535

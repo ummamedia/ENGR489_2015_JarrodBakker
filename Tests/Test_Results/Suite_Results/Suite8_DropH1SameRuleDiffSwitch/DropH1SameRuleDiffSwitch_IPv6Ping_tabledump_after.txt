@@ -1,0 +1,28 @@
+We should see that s1 n_packets counters for the blocking entries in table 0 set at 0.
+This is because returning traffic destined for h1 coming from s3 should get blocked.
+
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=59.080s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,ipv6,ipv6_dst=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=59.080s, table=0, n_packets=47, n_bytes=3718, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=9.401s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:2
+ cookie=0x0, duration=8.268s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=59.080s, table=1, n_packets=41, n_bytes=3202, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s2 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=58.955s, table=0, n_packets=4, n_bytes=296, send_flow_rem priority=65535,ipv6,ipv6_dst=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=58.956s, table=0, n_packets=49, n_bytes=3902, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=10.570s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2
+ cookie=0x0, duration=9.443s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3
+ cookie=0x0, duration=8.313s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:3
+ cookie=0x0, duration=58.956s, table=1, n_packets=40, n_bytes=3128, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s3 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=58.985s, table=0, n_packets=8, n_bytes=592, send_flow_rem priority=65535,ipv6,ipv6_dst=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=59.055s, table=0, n_packets=47, n_bytes=3718, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=9.375s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:03 actions=output:1
+ cookie=0x0, duration=8.288s, table=1, n_packets=4, n_bytes=344, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=58.985s, table=1, n_packets=41, n_bytes=3202, send_flow_rem priority=0 actions=CONTROLLER:65535
+

@@ -1,0 +1,25 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=412.429s, table=0, n_packets=785, n_bytes=43578, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=357.387s, table=1, n_packets=375, n_bytes=22950, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=357.349s, table=1, n_packets=185, n_bytes=8850, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:2
+ cookie=0x0, duration=357.082s, table=1, n_packets=186, n_bytes=8892, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=412.429s, table=1, n_packets=42, n_bytes=3012, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s2 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=412.428s, table=0, n_packets=1156, n_bytes=63840, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=357.593s, table=1, n_packets=186, n_bytes=11412, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=357.564s, table=1, n_packets=185, n_bytes=8850, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2
+ cookie=0x0, duration=357.407s, table=1, n_packets=375, n_bytes=22950, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=357.384s, table=1, n_packets=185, n_bytes=8850, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3
+ cookie=0x0, duration=357.134s, table=1, n_packets=186, n_bytes=8892, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:3
+ cookie=0x0, duration=412.423s, table=1, n_packets=44, n_bytes=3096, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s3 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=412.497s, table=0, n_packets=785, n_bytes=43578, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=357.469s, table=1, n_packets=187, n_bytes=11454, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:01 actions=output:3
+ cookie=0x0, duration=357.389s, table=1, n_packets=185, n_bytes=8850, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:03 actions=output:1
+ cookie=0x0, duration=357.196s, table=1, n_packets=188, n_bytes=11496, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:3
+ cookie=0x0, duration=357.132s, table=1, n_packets=186, n_bytes=8892, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=412.486s, table=1, n_packets=43, n_bytes=3054, send_flow_rem priority=0 actions=CONTROLLER:65535

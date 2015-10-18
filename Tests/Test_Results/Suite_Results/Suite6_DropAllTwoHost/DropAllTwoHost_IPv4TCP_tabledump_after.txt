@@ -1,0 +1,9 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=274.810s, table=0, n_packets=90, n_bytes=4860, send_flow_rem priority=65535,tcp,nw_src=10.0.0.1,nw_dst=10.0.0.2 actions=drop
+ cookie=0x0, duration=274.827s, table=0, n_packets=203, n_bytes=11310, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=221.555s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=125.831s, table=1, n_packets=92, n_bytes=4944, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=125.806s, table=1, n_packets=91, n_bytes=4902, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3
+ cookie=0x0, duration=274.826s, table=1, n_packets=22, n_bytes=1560, send_flow_rem priority=0 actions=CONTROLLER:65535

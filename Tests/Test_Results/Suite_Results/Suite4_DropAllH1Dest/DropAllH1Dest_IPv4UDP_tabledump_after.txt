@@ -1,0 +1,27 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=236.491s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=236.491s, table=0, n_packets=396, n_bytes=22416, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=206.513s, table=1, n_packets=94, n_bytes=6468, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=206.488s, table=1, n_packets=93, n_bytes=3906, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2
+ cookie=0x0, duration=109.851s, table=1, n_packets=94, n_bytes=6468, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=109.817s, table=1, n_packets=93, n_bytes=3906, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3
+ cookie=0x0, duration=236.491s, table=1, n_packets=26, n_bytes=1836, send_flow_rem priority=0 actions=CONTROLLER:65535
+ 
+ 
+My thoughts: you cannot evaluate destination addresses this way using UDP as the reply is sent back using ICMP. As there is no
+ACL rule to filter the returning ICMP packet, a reply is received by the script. To evaluate it one should run the test with
+only h1 and h2 in the network connected to the same switch.
+
+Second atempt (2 host network running test from h2):
+
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=304.007s, table=0, n_packets=90, n_bytes=3780, send_flow_rem priority=65535,udp,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=304.010s, table=0, n_packets=18, n_bytes=1284, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=235.144s, table=1, n_packets=2, n_bytes=84, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2
+ cookie=0x0, duration=304.009s, table=1, n_packets=17, n_bytes=1242, send_flow_rem priority=0 actions=CONTROLLER:65535
+

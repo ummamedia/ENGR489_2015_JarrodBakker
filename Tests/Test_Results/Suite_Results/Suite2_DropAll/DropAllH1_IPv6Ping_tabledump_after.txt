@@ -1,0 +1,16 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=66.336s, table=0, n_packets=4, n_bytes=264, send_flow_rem priority=65535,ipv6,ipv6_src=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=66.336s, table=0, n_packets=4, n_bytes=280, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=66.336s, table=1, n_packets=4, n_bytes=280, send_flow_rem priority=0 actions=CONTROLLER:65535
+ 
+After a single repeat:
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=92.427s, table=0, n_packets=6, n_bytes=388, send_flow_rem priority=65535,ipv6,ipv6_src=fe80::200:ff:fe00:1 actions=drop
+ cookie=0x0, duration=92.427s, table=0, n_packets=4, n_bytes=280, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=92.427s, table=1, n_packets=4, n_bytes=280, send_flow_rem priority=0 actions=CONTROLLER:65535
+ 
+My thoughts: other traffic is being matched to the first entry, this could be because the IPv6 is a link local address.

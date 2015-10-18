@@ -1,0 +1,16 @@
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=34.370s, table=0, n_packets=5, n_bytes=326, send_flow_rem priority=65535,ipv6,ipv6_src=fe80::200:ff:fe00:3 actions=drop
+ cookie=0x0, duration=38.634s, table=0, n_packets=33, n_bytes=2610, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=38.632s, table=1, n_packets=33, n_bytes=2610, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s2 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=38.645s, table=0, n_packets=33, n_bytes=2610, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=38.645s, table=1, n_packets=33, n_bytes=2610, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s3 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=38.673s, table=0, n_packets=40, n_bytes=3084, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=3.817s, table=1, n_packets=1, n_bytes=86, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=3.737s, table=1, n_packets=1, n_bytes=62, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:03 actions=output:1
+ cookie=0x0, duration=38.673s, table=1, n_packets=40, n_bytes=3084, send_flow_rem priority=0 actions=CONTROLLER:65535

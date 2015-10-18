@@ -1,0 +1,32 @@
+We should see that s1 n_packets counters for the blocking entries in table 0 set at 0.
+This is because returning traffic destined for h1 coming from s3 should get blocked.
+
+
+mininet> dpctl dump-flows -O OpenFlow13
+*** s1 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=133.673s, table=0, n_packets=0, n_bytes=0, send_flow_rem priority=65535,ip,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=133.673s, table=0, n_packets=40, n_bytes=2796, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=8.360s, table=1, n_packets=3, n_bytes=126, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=8.303s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:2
+ cookie=0x0, duration=7.142s, table=1, n_packets=2, n_bytes=84, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=133.673s, table=1, n_packets=37, n_bytes=2670, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s2 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=133.600s, table=0, n_packets=1, n_bytes=42, send_flow_rem priority=65535,ip,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=133.600s, table=0, n_packets=42, n_bytes=2880, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=9.509s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=9.474s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:02 actions=output:2
+ cookie=0x0, duration=8.356s, table=1, n_packets=3, n_bytes=126, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:01 actions=output:1
+ cookie=0x0, duration=8.331s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:03 actions=output:3
+ cookie=0x0, duration=7.198s, table=1, n_packets=2, n_bytes=84, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:04 actions=output:3
+ cookie=0x0, duration=133.600s, table=1, n_packets=39, n_bytes=2754, send_flow_rem priority=0 actions=CONTROLLER:65535
+*** s3 ------------------------------------------------------------------------
+OFPST_FLOW reply (OF1.3) (xid=0x2):
+ cookie=0x0, duration=133.628s, table=0, n_packets=2, n_bytes=84, send_flow_rem priority=65535,ip,nw_dst=10.0.0.1 actions=drop
+ cookie=0x0, duration=133.636s, table=0, n_packets=40, n_bytes=2796, send_flow_rem priority=0 actions=goto_table:1
+ cookie=0x0, duration=8.416s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=1,dl_dst=00:00:00:00:00:01 actions=output:3
+ cookie=0x0, duration=8.348s, table=1, n_packets=1, n_bytes=42, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:03 actions=output:1
+ cookie=0x0, duration=7.253s, table=1, n_packets=2, n_bytes=84, send_flow_rem in_port=2,dl_dst=00:00:00:00:00:01 actions=output:3
+ cookie=0x0, duration=7.186s, table=1, n_packets=2, n_bytes=84, send_flow_rem in_port=3,dl_dst=00:00:00:00:00:04 actions=output:2
+ cookie=0x0, duration=133.634s, table=1, n_packets=38, n_bytes=2712, send_flow_rem priority=0 actions=CONTROLLER:65535

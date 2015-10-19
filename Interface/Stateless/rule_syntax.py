@@ -1,3 +1,17 @@
+# Copyright 2015 Jarrod N. Bakker
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+###########################################################################
 # A syntax checker for ACL rules. This is used by passing the appropriate
 # values into the check_rule() function. The caller of check_rule() will
 # be returned a list. If the list is empty then the rule is valid. However
